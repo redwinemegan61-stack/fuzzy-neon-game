@@ -1,0 +1,6 @@
+{
+  "name": "Neon Fuzz Reflex Puzzles",
+  "description": "Addictive reflex-based neon puzzle challenges, board progression, town upgrades, and adorable fuzzy mascots with unique powers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
