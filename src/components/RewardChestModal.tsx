@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Gift, Sparkles, Coins, Flame, Shield, X, Check } from 'lucide-react';
 import { Mascot } from '../types';
@@ -23,6 +23,13 @@ export const RewardChestModal: React.FC<RewardChestModalProps> = ({
 }) => {
   const [opened, setOpened] = useState(false);
   const [loot, setLoot] = useState<{ coins: number; dice: number; shields: number } | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setOpened(false);
+      setLoot(null);
+    }
+  }, [isOpen]);
 
   const handleOpenChest = () => {
     if (opened) return;

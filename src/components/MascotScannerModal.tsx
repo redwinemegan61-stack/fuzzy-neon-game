@@ -23,18 +23,69 @@ export const MascotScannerModal: React.FC<MascotScannerModalProps> = ({
   const [createdMascot, setCreatedMascot] = useState<Mascot | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Resize image to max 800px dimension to optimize network and API processing
+  const processAndSetImage = (file: File) => {
+    setMimeType('image/jpeg');
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_DIM = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height && width > MAX_DIM) {
+          height = Math.round((height * MAX_DIM) / width);
+          width = MAX_DIM;
+        } else if (height > MAX_DIM) {
+          width = Math.round((width * MAX_DIM) / height);
+          height = MAX_DIM;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedData = canvas.toDataURL('image/jpeg', 0.85);
+          setSelectedImage(compressedData);
+          setErrorMsg(null);
+        } else {
+          setSelectedImage(event.target?.result as string);
+          setErrorMsg(null);
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    processAndSetImage(file);
+  };
 
-    setMimeType(file.type || 'image/jpeg');
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setSelectedImage(event.target?.result as string);
-      setErrorMsg(null);
-    };
-    reader.readAsDataURL(file);
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      processAndSetImage(file);
+    }
   };
 
   const handleScanPhoto = async () => {
@@ -50,16 +101,16 @@ export const MascotScannerModal: React.FC<MascotScannerModalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageBase64: selectedImage,
-          mimeType,
+          mimeType: 'image/jpeg',
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to analyze image with Gemini');
+        throw new Error('Failed to analyze image');
       }
 
       const data = await response.json();
-      const raw = data.mascot;
+      const raw = data.mascot || {};
 
       const newMascot: Mascot = {
         id: `custom-${Date.now()}`,
@@ -72,7 +123,7 @@ export const MascotScannerModal: React.FC<MascotScannerModalProps> = ({
         furColor: raw.furColor || '#8b5cf6',
         eyesColor: raw.eyesColor || '#00ffff',
         earStyle: 'bunny',
-        voiceName: 'Kore',
+        voiceName: Math.random() > 0.5 ? 'Puck' : 'Kore',
         uniqueAbility: {
           name: raw.uniqueAbility?.name || 'Prism Burst',
           description: raw.uniqueAbility?.description || 'Slows puzzle timer by 25% for high combos.',
@@ -80,8 +131,8 @@ export const MascotScannerModal: React.FC<MascotScannerModalProps> = ({
           multiplier: 1.3,
         },
         level: 1,
-        cheerQuote: raw.cheerQuote || 'Together we shine at maximum neon intensity!',
-        originStory: raw.originStory || 'Synthesized from your uploaded photo using Gemini 3.1 Pro.',
+        cheerQuote: raw.cheerQuote?.startsWith('*') ? raw.cheerQuote : '*squeee-pip!* ✨ *boing boing!* 🐾',
+        originStory: raw.originStory || 'Synthesized from your uploaded photo using Gemini multimodal AI.',
         isCustom: true,
         customPhotoUrl: selectedImage,
       };
@@ -91,7 +142,7 @@ export const MascotScannerModal: React.FC<MascotScannerModalProps> = ({
       confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
     } catch (err: any) {
       console.error(err);
-      setErrorMsg('Could not process photo with Gemini 3.1 Pro. Please try another image.');
+      setErrorMsg('Could not process photo with AI. Please try another image.');
     } finally {
       setIsScanning(false);
     }
@@ -130,7 +181,7 @@ export const MascotScannerModal: React.FC<MascotScannerModalProps> = ({
           <div>
             <h3 className="text-base font-black text-white">AI Mascot Scanner</h3>
             <p className="text-[11px] text-cyan-300">
-              Powered by <strong className="text-white">Gemini 3.1 Pro</strong> Image Analysis
+              Powered by <strong className="text-white">Gemini Vision AI</strong> Multimodal Scanner
             </p>
           </div>
         </div>
@@ -188,7 +239,14 @@ export const MascotScannerModal: React.FC<MascotScannerModalProps> = ({
 
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="w-full aspect-[4/3] rounded-2xl border-2 border-dashed border-cyan-500/40 bg-slate-950/60 hover:bg-slate-900/60 transition-all flex flex-col items-center justify-center p-4 cursor-pointer relative overflow-hidden group mb-3"
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`w-full aspect-[4/3] rounded-2xl border-2 border-dashed transition-all flex flex-col items-center justify-center p-4 cursor-pointer relative overflow-hidden group mb-3 ${
+                isDragging 
+                  ? 'border-cyan-400 bg-cyan-950/40 ring-4 ring-cyan-500/20' 
+                  : 'border-cyan-500/40 bg-slate-950/60 hover:bg-slate-900/60'
+              }`}
             >
               {selectedImage ? (
                 <>
@@ -206,7 +264,7 @@ export const MascotScannerModal: React.FC<MascotScannerModalProps> = ({
                       />
                       <Loader2 className="w-8 h-8 text-cyan-300 animate-spin mt-3" />
                       <span className="text-xs font-black text-cyan-200 uppercase tracking-wider mt-2">
-                        Gemini 3.1 Pro Synthesizing...
+                        Gemini Vision AI Synthesizing...
                       </span>
                     </div>
                   )}

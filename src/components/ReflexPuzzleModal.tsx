@@ -83,6 +83,7 @@ export const ReflexPuzzleModal: React.FC<ReflexPuzzleModalProps> = ({
     setShieldUsed(false);
     setPinsUnlocked(0);
     setMascotCheer(activeMascot.cheerQuote);
+    SoundEngine.playMascotSqueak('squeak');
 
     // Initial countdown
     const cdInterval = setInterval(() => {
@@ -109,6 +110,18 @@ export const ReflexPuzzleModal: React.FC<ReflexPuzzleModalProps> = ({
     } else if (type === 'laser_slicer') {
       spawnIncomingLaser();
     }
+  };
+
+  const switchGameType = (newType: ReflexGameType) => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    SoundEngine.playBoardHop();
+    setGameType(newType);
+    setGameState('playing');
+    setCountdown(0);
+    setScore(0);
+    setStreak(0);
+    setPinsUnlocked(0);
+    startPlaying(newType);
   };
 
   // 1. PULSE MATRIX LOGIC
@@ -351,10 +364,48 @@ export const ReflexPuzzleModal: React.FC<ReflexPuzzleModalProps> = ({
           </div>
         </div>
 
+        {/* Game Mode Selector Buttons */}
+        <div className="grid grid-cols-3 gap-1 mb-3 p-1 rounded-xl bg-slate-950/80 border border-slate-800">
+          <button
+            onClick={() => switchGameType('pulse_matrix')}
+            className={`py-1 px-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center justify-center gap-1 ${
+              gameType === 'pulse_matrix'
+                ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>⚡ Pulse</span>
+          </button>
+          <button
+            onClick={() => switchGameType('laser_slicer')}
+            className={`py-1 px-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center justify-center gap-1 ${
+              gameType === 'laser_slicer'
+                ? 'bg-fuchsia-500 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>⚔️ Laser</span>
+          </button>
+          <button
+            onClick={() => switchGameType('cyber_lock')}
+            className={`py-1 px-1.5 rounded-lg text-[10px] font-black uppercase transition-all flex items-center justify-center gap-1 ${
+              gameType === 'cyber_lock'
+                ? 'bg-amber-400 text-slate-950 shadow-sm'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <span>🔐 Lock</span>
+          </button>
+        </div>
+
         {/* Mascot Active Ability Cheer Bubble */}
-        <div className="mb-3 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-1.5 text-cyan-300 font-bold text-[11px] truncate">
-            <Sparkles className="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" />
+        <div 
+          onClick={() => SoundEngine.playMascotSqueak('squeak')}
+          className="mb-3 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-pink-500/40 flex items-center justify-between text-xs cursor-pointer transition-colors group"
+          title="Tap to hear mascot squeak!"
+        >
+          <div className="flex items-center gap-1.5 text-cyan-300 font-bold text-[11px] truncate group-hover:text-pink-300 transition-colors">
+            <Sparkles className="w-3.5 h-3.5 text-yellow-400 group-hover:text-pink-400 flex-shrink-0 animate-pulse" />
             <span className="truncate">{mascotCheer || activeMascot.uniqueAbility.description}</span>
           </div>
           {activeMascot.uniqueAbility.effectType === 'streak_shield' && (

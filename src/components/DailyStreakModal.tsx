@@ -1,8 +1,8 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { 
-  Flame, Calendar, Sparkles, Coins, Dices, Shield, 
-  Check, Lock, Crown, X, Star, Zap, Clock
+  Flame, Sparkles, Coins, Dices, Shield, 
+  Check, Lock, Crown, X, Clock
 } from 'lucide-react';
 import { DAILY_STREAK_REWARDS, StreakRewardTier } from '../data/dailyStreakData';
 import { DailyStreakState } from '../types';

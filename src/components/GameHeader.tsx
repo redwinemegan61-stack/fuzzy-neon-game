@@ -1,8 +1,9 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Coins, Shield, Trophy, Sparkles, Volume2, Plus, Star, Flame } from 'lucide-react';
+import { Coins, Shield, Trophy, Sparkles, Volume2, Plus, Star, Flame, Gamepad2, ArrowLeftRight } from 'lucide-react';
 import { Mascot } from '../types';
 import { MascotAvatar } from './MascotAvatar';
+import { SoundEngine } from '../utils/sound';
 
 interface GameHeaderProps {
   playerName: string;
@@ -15,11 +16,15 @@ interface GameHeaderProps {
   activeMascot: Mascot;
   dailyStreakDays?: number;
   dailyStreakClaimedToday?: boolean;
+  duplicateTradesCount?: number;
+  unclaimedAchievementsCount?: number;
   onOpenDailyStreak?: () => void;
+  onOpenPuzzles?: () => void;
   onOpenMascots: () => void;
   onOpenLeaderboard: () => void;
   onOpenScanner: () => void;
   onOpenLevelOverlay?: () => void;
+  onOpenTradingPost?: () => void;
 }
 
 export const GameHeader: React.FC<GameHeaderProps> = ({
@@ -33,11 +38,15 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
   activeMascot,
   dailyStreakDays = 1,
   dailyStreakClaimedToday = false,
+  duplicateTradesCount = 0,
+  unclaimedAchievementsCount = 0,
   onOpenDailyStreak,
+  onOpenPuzzles,
   onOpenMascots,
   onOpenLeaderboard,
   onOpenScanner,
   onOpenLevelOverlay,
+  onOpenTradingPost,
 }) => {
   return (
     <header className="w-full max-w-md mx-auto px-3 py-2 flex flex-col gap-2">
@@ -48,9 +57,12 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
           className="flex items-center gap-2 p-1 pr-3 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 transition-all shadow-md backdrop-blur-md"
         >
           <div 
-            onClick={onOpenMascots}
+            onClick={() => {
+              SoundEngine.playMascotSqueak('squeak');
+              onOpenMascots();
+            }}
             className="relative cursor-pointer hover:scale-105 transition-transform" 
-            title="Change Mascot"
+            title="Mascot Sanctuary & Squeaks"
           >
             <MascotAvatar mascot={activeMascot} size="sm" showHairGlow={false} interactive={false} />
             <div className="absolute -bottom-1 -right-1 px-1 rounded-md bg-amber-400 text-slate-950 text-[8px] font-black border border-white">
@@ -125,28 +137,65 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
 
       {/* Quick Action Navigation Bar */}
       <div className="flex items-center justify-between gap-1.5">
+        {onOpenPuzzles && (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={onOpenPuzzles}
+            className="flex-1 py-1.5 px-2 rounded-xl bg-gradient-to-r from-fuchsia-950/80 to-pink-950/80 border border-fuchsia-500/50 hover:border-fuchsia-400 text-fuchsia-300 hover:text-white text-[11px] font-black flex items-center justify-center gap-1 transition-all shadow-[0_0_12px_rgba(255,0,127,0.25)]"
+          >
+            <Gamepad2 className="w-3.5 h-3.5 text-fuchsia-400 animate-pulse" />
+            <span>Puzzles</span>
+          </motion.button>
+        )}
+
         <button
           onClick={onOpenMascots}
           className="flex-1 py-1.5 px-2 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-all"
         >
-          <Sparkles className="w-3.5 h-3.5 text-fuchsia-400" />
-          <span>Mascots ({activeMascot.name} Lv.{activeMascot.level})</span>
+          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <span>Mascots</span>
         </button>
+
+        {onOpenTradingPost && (
+          <button
+            onClick={onOpenTradingPost}
+            className="flex-1 py-1.5 px-2 rounded-xl bg-gradient-to-r from-amber-950/80 to-orange-950/80 border border-amber-500/50 hover:border-amber-400 text-amber-300 hover:text-white text-[11px] font-black flex items-center justify-center gap-1 transition-all relative shadow-sm"
+            title="Trade duplicate burrow items with global players"
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5 text-amber-400" />
+            <span>Trade</span>
+            {duplicateTradesCount > 0 && (
+              <span className="absolute -top-1 -right-1 px-1 rounded-full bg-lime-400 text-slate-950 text-[8px] font-black border border-white">
+                {duplicateTradesCount}
+              </span>
+            )}
+          </button>
+        )}
 
         <button
           onClick={onOpenScanner}
           className="flex-1 py-1.5 px-2 rounded-xl bg-cyan-950/60 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 text-[11px] font-bold flex items-center justify-center gap-1 transition-all shadow-sm"
         >
           <Plus className="w-3.5 h-3.5 text-cyan-400" />
-          <span>AI Pet Scan</span>
+          <span>AI Scan</span>
         </button>
 
         <button
           onClick={onOpenLeaderboard}
-          className="flex-1 py-1.5 px-2 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-all"
+          className="flex-1 py-1.5 px-2 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-all relative"
+          title="Leaderboard & Milestones"
         >
           <Trophy className="w-3.5 h-3.5 text-amber-400" />
-          <span>Leaderboard</span>
+          <span>Trophies</span>
+          {unclaimedAchievementsCount > 0 && (
+            <span className="w-2 h-2 rounded-full bg-pink-500 animate-ping absolute -top-1 -right-1" />
+          )}
+          {unclaimedAchievementsCount > 0 && (
+            <span className="px-1 rounded-full bg-pink-500 text-white text-[8px] font-black absolute -top-1 -right-1 shadow-sm">
+              {unclaimedAchievementsCount}
+            </span>
+          )}
         </button>
       </div>
     </header>

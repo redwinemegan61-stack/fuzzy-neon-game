@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { 
   Trophy, Share2, Users, Flame, Star, Shield, 
-  Copy, Check, Twitter, Send, X, Swords, ArrowUpRight
+  Copy, Check, Twitter, Send, X, Swords, ArrowUpRight, Award, Sparkles
 } from 'lucide-react';
-import { LeaderboardEntry, Mascot } from '../types';
+import { LeaderboardEntry, Mascot, GameState, MascotBurrow } from '../types';
 import { MascotAvatar } from './MascotAvatar';
 import { SoundEngine } from '../utils/sound';
+import { ACHIEVEMENTS, getAchievementProgress } from '../data/achievementsData';
+import { AchievementsSection } from './AchievementsSection';
 
 interface LeaderboardAndSocialModalProps {
   isOpen: boolean;
@@ -16,6 +18,11 @@ interface LeaderboardAndSocialModalProps {
   activeMascot: Mascot;
   shields: number;
   highestStreak: number;
+  gameState?: GameState;
+  currentBurrows?: Record<string, MascotBurrow>;
+  initialTab?: 'leaderboard' | 'achievements' | 'social';
+  onClaimAchievement?: (achievementId: string) => void;
+  onClaimAllAchievements?: () => void;
   onLaunchRaid: (targetPlayer: LeaderboardEntry) => void;
   onClose: () => void;
 }
@@ -28,13 +35,34 @@ export const LeaderboardAndSocialModal: React.FC<LeaderboardAndSocialModalProps>
   activeMascot,
   shields,
   highestStreak,
+  gameState,
+  currentBurrows,
+  initialTab = 'leaderboard',
+  onClaimAchievement,
+  onClaimAllAchievements,
   onLaunchRaid,
   onClose,
 }) => {
-  const [activeTab, setActiveTab] = useState<'leaderboard' | 'social'>('leaderboard');
+  const [activeTab, setActiveTab] = useState<'leaderboard' | 'achievements' | 'social'>(initialTab);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Sync initialTab when modal opens
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
+
+  // Compute number of ready-to-claim achievements
+  const unclaimedCount = useMemo(() => {
+    if (!gameState) return 0;
+    return ACHIEVEMENTS.filter((achievement) => {
+      const progress = getAchievementProgress(achievement, gameState, currentBurrows);
+      return progress.isCompleted && !progress.isClaimed;
+    }).length;
+  }, [gameState, currentBurrows]);
 
   // Fetch or submit leaderboard
   useEffect(() => {
@@ -97,7 +125,7 @@ export const LeaderboardAndSocialModal: React.FC<LeaderboardAndSocialModalProps>
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="w-full max-w-sm rounded-3xl bg-[#0a0d24] border-2 border-fuchsia-500/50 p-5 shadow-[0_0_50px_rgba(255,0,127,0.3)] flex flex-col relative overflow-hidden"
+        className="w-full max-w-md rounded-3xl bg-[#0a0d24] border-2 border-fuchsia-500/50 p-4 sm:p-5 shadow-[0_0_50px_rgba(255,0,127,0.3)] flex flex-col relative max-h-[92vh] overflow-y-auto custom-scrollbar"
       >
         {/* Close Button */}
         <button
@@ -107,11 +135,30 @@ export const LeaderboardAndSocialModal: React.FC<LeaderboardAndSocialModalProps>
           <X className="w-5 h-5" />
         </button>
 
-        {/* Modal Tabs */}
+        {/* Modal Header */}
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-fuchsia-600 to-amber-500 flex items-center justify-center text-white shadow-md">
+            <Trophy className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+              <span>Hall of Fame & Trophies</span>
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            </h3>
+            <p className="text-[10px] text-fuchsia-300 font-bold">
+              Global Ranks • Milestones • Community Raids
+            </p>
+          </div>
+        </div>
+
+        {/* Modal 3-Tab Switch */}
         <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-900 border border-slate-800 mb-4">
           <button
-            onClick={() => setActiveTab('leaderboard')}
-            className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
+            onClick={() => {
+              SoundEngine.playTileStep();
+              setActiveTab('leaderboard');
+            }}
+            className={`flex-1 py-2 px-1 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
               activeTab === 'leaderboard'
                 ? 'bg-gradient-to-r from-fuchsia-600 to-pink-500 text-white shadow'
                 : 'text-slate-400 hover:text-white'
@@ -120,16 +167,40 @@ export const LeaderboardAndSocialModal: React.FC<LeaderboardAndSocialModalProps>
             <Trophy className="w-3.5 h-3.5" />
             <span>Leaderboard</span>
           </button>
+
           <button
-            onClick={() => setActiveTab('social')}
-            className={`flex-1 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
+            onClick={() => {
+              SoundEngine.playTileStep();
+              setActiveTab('achievements');
+            }}
+            className={`flex-1 py-2 px-1 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all relative ${
+              activeTab === 'achievements'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 shadow font-black'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Award className="w-3.5 h-3.5" />
+            <span>Achievements</span>
+            {unclaimedCount > 0 && (
+              <span className="flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-pink-500 text-white text-[9px] font-black shadow-sm animate-pulse ml-0.5">
+                {unclaimedCount}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
+              SoundEngine.playTileStep();
+              setActiveTab('social');
+            }}
+            className={`flex-1 py-2 px-1 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
               activeTab === 'social'
                 ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span>Social & Raids</span>
+            <span>Social</span>
           </button>
         </div>
 
@@ -214,7 +285,25 @@ export const LeaderboardAndSocialModal: React.FC<LeaderboardAndSocialModalProps>
           </div>
         )}
 
-        {/* TAB 2: SOCIAL MEDIA INTEGRATION & BRAG CARD */}
+        {/* TAB 2: MILESTONES & ACHIEVEMENTS */}
+        {activeTab === 'achievements' && gameState && (
+          <AchievementsSection
+            gameState={gameState}
+            currentBurrows={currentBurrows}
+            onClaimAchievement={(id) => {
+              if (onClaimAchievement) {
+                onClaimAchievement(id);
+              }
+            }}
+            onClaimAllAchievements={() => {
+              if (onClaimAllAchievements) {
+                onClaimAllAchievements();
+              }
+            }}
+          />
+        )}
+
+        {/* TAB 3: SOCIAL MEDIA INTEGRATION & BRAG CARD */}
         {activeTab === 'social' && (
           <div className="flex flex-col items-center">
             {/* Neon Brag Card Visual */}

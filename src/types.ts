@@ -14,7 +14,7 @@ export interface Mascot {
   furColor: string;
   eyesColor: string;
   earStyle: 'bunny' | 'bear' | 'cat' | 'tuft' | 'fluff';
-  voiceName: 'Kore' | 'Puck' | 'Zephyr' | 'Fenrir';
+  voiceName: 'Kore' | 'Puck' | 'Aoede' | 'Zephyr' | 'Fenrir';
   uniqueAbility: MascotAbility;
   level: number;
   cheerQuote: string;
@@ -107,6 +107,21 @@ export interface PlayerStats {
   highestStreak: number;
 }
 
+export type AchievementCategory = 'wealth' | 'burrow' | 'puzzles' | 'mascots' | 'adventure';
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  category: AchievementCategory;
+  emoji: string;
+  target: number;
+  unit?: string;
+  rewardCoins: number;
+  rewardRolls: number;
+  rewardPoints: number;
+}
+
 export interface BurrowStyleOption {
   id: string;
   name: string;
@@ -145,6 +160,95 @@ export interface DailyStreakState {
   totalDaysClaimed: number;
 }
 
+export interface DailyFeaturedClaim {
+  date: string;
+  puzzleId: string;
+  puzzleTitle: string;
+  coinsEarned: number;
+  diceEarned: number;
+  uniqueRewardName: string;
+  timestamp: number;
+}
+
+export interface DailyFeaturedPuzzleState {
+  lastCompletedDate?: string;
+  consecutiveStreak: number;
+  totalCompletedCount: number;
+  claimedHistory: DailyFeaturedClaim[];
+}
+
+export interface BurrowTradeItem {
+  id: string;
+  name: string;
+  category: 'seating' | 'table' | 'rug' | 'lighting' | 'shelving' | 'chest' | 'bed' | 'decor' | 'crystals' | 'wall_art';
+  setId: 'toadstool_forest' | 'bioluminescent_grotto' | 'sweet_pastels' | 'deep_sea_coral' | 'celestial_aurora';
+  setName: string;
+  icon: string;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  description: string;
+  previewColor: string;
+  accentColor: string;
+  cozyAuraBonus: number;
+}
+
+export interface BurrowCollectionSet {
+  id: string;
+  name: string;
+  theme: string;
+  icon: string;
+  badgeColor: string;
+  gradient: string;
+  itemIds: string[];
+  completionReward: {
+    coins: number;
+    diceBonus: number;
+    title: string;
+    cozyAuraBoost: number;
+  };
+}
+
+export interface GlobalTradeOffer {
+  id: string;
+  traderName: string;
+  traderCountry: string;
+  traderCountryFlag: string;
+  traderMascot: string;
+  traderAvatarColor: string;
+  traderRating: number;
+  wantsItemId: string;
+  offersItemId: string;
+  status: 'available' | 'completed';
+  postedTimeAgo: string;
+  isFeaturedRequest?: boolean;
+}
+
+export interface PlayerTradeListing {
+  id: string;
+  offeringItemId: string;
+  requestingItemId: string | 'any_missing';
+  postedAt: number;
+  status: 'active' | 'matched' | 'completed';
+}
+
+export interface TradeLogEntry {
+  id: string;
+  traderName: string;
+  givenItemName: string;
+  givenItemIcon: string;
+  receivedItemName: string;
+  receivedItemIcon: string;
+  completedAt: string;
+  setCompleted?: string;
+}
+
+export interface TradingPostState {
+  inventory: Record<string, number>; // itemId -> count
+  completedSetIds: string[];
+  playerListings: PlayerTradeListing[];
+  tradeHistory: TradeLogEntry[];
+  courierCooldownUntil?: number;
+}
+
 export interface GameState {
   playerName: string;
   coins: number;
@@ -164,7 +268,20 @@ export interface GameState {
   maxShields: number;
   stats: PlayerStats;
   dailyStreak?: DailyStreakState;
+  dailyFeatured?: DailyFeaturedPuzzleState;
   mascotLevels?: Record<string, number>;
+  undergroundDen?: {
+    unlockedFurnitureIds: string[];
+    roomPlacements: Record<string, string>; // slotId -> furnitureId
+    dayNightMode?: 'auto' | 'day' | 'night';
+    excavatedChamberIds?: string[]; // IDs of dug-out cavern chambers
+    mascotLocation?: {
+      chamberId: string; // 'surface' or chamber ID
+      nodeId?: 'left' | 'center' | 'right' | 'cubby';
+      cubbyId?: string;
+      action?: 'idle' | 'snuggle' | 'sleeping' | 'bouncing' | 'lofi_dance' | 'in_cubby';
+    };
+  };
   burrows?: Record<
     string,
     {
@@ -177,4 +294,6 @@ export interface GameState {
       >;
     }
   >;
+  tradingPost?: TradingPostState;
+  claimedAchievementIds?: string[];
 }

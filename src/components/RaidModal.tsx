@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Swords, Shield, Coins, Sparkles, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { LeaderboardEntry, Mascot } from '../types';
@@ -24,6 +24,27 @@ export const RaidModal: React.FC<RaidModalProps> = ({
   const [selectedVault, setSelectedVault] = useState<number | null>(null);
   const [outcome, setOutcome] = useState<'success' | 'shielded' | null>(null);
   const [stolenAmount, setStolenAmount] = useState(0);
+  const timeoutRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedVault(null);
+      setOutcome(null);
+      setStolenAmount(0);
+    }
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [isOpen]);
+
+  const handleClose = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    onClose();
+  };
 
   const rival = targetPlayer || {
     id: 'rival-1',
@@ -57,7 +78,7 @@ export const RaidModal: React.FC<RaidModalProps> = ({
       confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
     }
 
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       onComplete(won);
     }, 2200);
   };
@@ -73,7 +94,7 @@ export const RaidModal: React.FC<RaidModalProps> = ({
         className="w-full max-w-sm rounded-3xl bg-[#090c24] border-2 border-red-500/50 p-5 shadow-[0_0_50px_rgba(239,68,68,0.3)] flex flex-col relative overflow-hidden"
       >
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="absolute top-4 right-4 p-1.5 rounded-full bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-all z-20"
         >
           <X className="w-5 h-5" />

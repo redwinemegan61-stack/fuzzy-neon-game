@@ -284,50 +284,305 @@ export const SoundEngine = {
       osc2.stop(now + 0.34);
     } catch (e) {}
   },
-};
 
-// Play Gemini 3.1 Flash TTS Audio (16-bit PCM little-endian at 24000Hz)
-export async function playGeminiTTS(base64Pcm: string, sampleRate = 24000): Promise<void> {
-  return new Promise((resolve, reject) => {
+  // Sound 12: Playful Spring Bounce (for trampoline / gummy furniture)
+  playBounce() {
     try {
       const ctx = getAudioContext();
-      const binaryString = atob(base64Pcm);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+
+      osc.frequency.setValueAtTime(180, now);
+      osc.frequency.exponentialRampToValueAtTime(520, now + 0.15);
+      osc.frequency.exponentialRampToValueAtTime(320, now + 0.3);
+
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.33);
+    } catch (e) {}
+  },
+
+  // Sound 13: Cozy Subterranean Lofi Chime Chord (for radio and fountains)
+  playLofiTune() {
+    try {
+      const ctx = getAudioContext();
+      const now = ctx.currentTime;
+      const chords = [392.0, 493.88, 587.33, 739.99]; // Gmaj7 dreamy voicing
+
+      chords.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+
+        gain.gain.setValueAtTime(0.001, now + idx * 0.08);
+        gain.gain.linearRampToValueAtTime(0.1, now + idx * 0.08 + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 0.75);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.8);
+      });
+    } catch (e) {}
+  },
+
+  // Sound 14: Transit Chute Whoosh Zip (for suction pipes and slides)
+  playWhooshZip() {
+    try {
+      const ctx = getAudioContext();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+
+      osc.frequency.setValueAtTime(800, now);
+      osc.frequency.exponentialRampToValueAtTime(260, now + 0.35);
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.18, now + 0.06);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.38);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.4);
+    } catch (e) {}
+  },
+
+  // Sound 15: Subterranean Excavation Dig & Gem Unearth
+  playExcavation() {
+    try {
+      const ctx = getAudioContext();
+      const now = ctx.currentTime;
+
+      // Pickaxe / rumble tap
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(140, now);
+      osc1.frequency.exponentialRampToValueAtTime(60, now + 0.2);
+      gain1.gain.setValueAtTime(0.2, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.23);
+
+      // Bright chime discovery
+      [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + 0.15 + idx * 0.08);
+
+        gain.gain.setValueAtTime(0.001, now + 0.15 + idx * 0.08);
+        gain.gain.linearRampToValueAtTime(0.12, now + 0.15 + idx * 0.08 + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15 + idx * 0.08 + 0.4);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + 0.15 + idx * 0.08);
+        osc.stop(now + 0.15 + idx * 0.08 + 0.45);
+      });
+    } catch (e) {}
+  },
+
+  // Sound 16: Ultra-Cute Mascot Chirp & Bubbly Squeak
+  playCuteChirp() {
+    this.playMascotSqueak('chirp');
+  },
+
+  // Sound 17: Multi-Style Procedural Mascot Noises & Squeaks
+  // Mascots never talk English words; they only make adorable animal/creature noises!
+  playMascotSqueak(style: 'squeak' | 'chirp' | 'purr' | 'boing' | 'giggle' | 'pip' = 'squeak') {
+    try {
+      const ctx = getAudioContext();
+      const now = ctx.currentTime;
+
+      if (style === 'squeak') {
+        // High-pitched rubber-ducky / plushie chibi squeak
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(820, now);
+        osc.frequency.exponentialRampToValueAtTime(2150, now + 0.07);
+        osc.frequency.exponentialRampToValueAtTime(1620, now + 0.16);
+
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(0.24, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+        // High harmonic sparkle overtone
+        const overtone = ctx.createOscillator();
+        const overGain = ctx.createGain();
+        overtone.type = 'triangle';
+        overtone.frequency.setValueAtTime(1640, now);
+        overtone.frequency.exponentialRampToValueAtTime(3200, now + 0.08);
+        overGain.gain.setValueAtTime(0.005, now);
+        overGain.gain.linearRampToValueAtTime(0.09, now + 0.03);
+        overGain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        overtone.connect(overGain);
+        overGain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.19);
+        overtone.start(now);
+        overtone.stop(now + 0.16);
+      } else if (style === 'chirp') {
+        // Two-part bouncy creature chirp
+        // Chirp 1
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(1100, now);
+        osc1.frequency.exponentialRampToValueAtTime(1750, now + 0.06);
+        gain1.gain.setValueAtTime(0.01, now);
+        gain1.gain.linearRampToValueAtTime(0.18, now + 0.02);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.08);
+
+        // Chirp 2 (higher, joyful accent)
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(1480, now + 0.07);
+        osc2.frequency.exponentialRampToValueAtTime(2450, now + 0.13);
+        osc2.frequency.exponentialRampToValueAtTime(2050, now + 0.20);
+        gain2.gain.setValueAtTime(0.01, now + 0.07);
+        gain2.gain.linearRampToValueAtTime(0.20, now + 0.10);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now + 0.07);
+        osc2.stop(now + 0.23);
+      } else if (style === 'purr') {
+        // Warm vibrating cat/creature purr with LFO tremolo
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.linearRampToValueAtTime(360, now + 0.2);
+        osc.frequency.linearRampToValueAtTime(300, now + 0.38);
+
+        // AM LFO for purring vibration
+        const lfo = ctx.createOscillator();
+        const lfoGain = ctx.createGain();
+        lfo.type = 'sine';
+        lfo.frequency.setValueAtTime(22, now); // 22Hz purr flutter
+        lfoGain.gain.setValueAtTime(0.09, now);
+
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(0.15, now + 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.40);
+
+        lfo.connect(gain.gain);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        lfo.start(now);
+        osc.stop(now + 0.42);
+        lfo.stop(now + 0.42);
+      } else if (style === 'boing') {
+        // Playful cartoon spring-boing noise
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(740, now);
+        osc.frequency.exponentialRampToValueAtTime(390, now + 0.05);
+        osc.frequency.exponentialRampToValueAtTime(1180, now + 0.16);
+        osc.frequency.exponentialRampToValueAtTime(840, now + 0.26);
+
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(0.22, now + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.29);
+      } else if (style === 'giggle') {
+        // Four rapid ascending bubbly micro-squeaks (giggle)
+        const notes = [1046.5, 1318.5, 1567.98, 2093.0]; // C6, E6, G6, C7
+        notes.forEach((freq, idx) => {
+          const t = now + idx * 0.045;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq * 0.95, t);
+          osc.frequency.exponentialRampToValueAtTime(freq * 1.08, t + 0.03);
+
+          gain.gain.setValueAtTime(0.01, t);
+          gain.gain.linearRampToValueAtTime(0.16, t + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.07);
+        });
+      } else if (style === 'pip') {
+        // Quick high-pitched pop/pip
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(1450, now);
+        osc.frequency.exponentialRampToValueAtTime(2250, now + 0.05);
+
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(0.20, now + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.09);
       }
+    } catch (e) {}
+  },
 
-      // Convert 16-bit PCM to Float32Array
-      const int16Array = new Int16Array(bytes.buffer);
-      const float32Array = new Float32Array(int16Array.length);
-      for (let i = 0; i < int16Array.length; i++) {
-        float32Array[i] = int16Array[i] / 32768.0;
-      }
+  playMascotPurr() {
+    this.playMascotSqueak('purr');
+  },
 
-      const audioBuffer = ctx.createBuffer(1, float32Array.length, sampleRate);
-      audioBuffer.copyToChannel(float32Array, 0);
+  playMascotBoing() {
+    this.playMascotSqueak('boing');
+  },
 
-      const source = ctx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(ctx.destination);
+  playMascotGiggle() {
+    this.playMascotSqueak('giggle');
+  },
 
-      source.onended = () => resolve();
-      source.start();
-    } catch (err) {
-      console.error('TTS audio playback error:', err);
-      reject(err);
-    }
-  });
+  playMascotPip() {
+    this.playMascotSqueak('pip');
+  },
+};
+
+// Play Gemini 3.1 Flash TTS Audio - DEPRECATED: Mascots do NOT speak words, they only squeak!
+// Kept for backward compatibility but routes to pure mascot squeak
+export async function playGeminiTTS(
+  _base64Pcm?: string,
+  _sampleRate = 24000,
+  _cutePitchMultiplier = 1.3
+): Promise<void> {
+  SoundEngine.playMascotSqueak('squeak');
+  return Promise.resolve();
 }
 
-// Fallback Browser Speech Synthesis for seamless voice feedback
-export function playFallbackMascotVoice(text: string, pitch = 1.3, rate = 1.1) {
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.pitch = pitch;
-    utterance.rate = rate;
-    window.speechSynthesis.speak(utterance);
-  }
+// Fallback Voice - DEPRECATED: Mascots do NOT talk, they make noises and squeak!
+export function playFallbackMascotVoice(_text?: string, _pitch = 1.75, _rate = 1.25) {
+  SoundEngine.playMascotSqueak('squeak');
 }

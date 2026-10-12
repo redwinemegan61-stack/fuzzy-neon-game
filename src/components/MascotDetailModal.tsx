@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Sparkles, Volume2, ShieldCheck, X, Check, Loader2, Plus, Zap, ArrowUpCircle, TrendingUp, Coins, Award } from 'lucide-react';
+import { Sparkles, Volume2, ShieldCheck, X, Check, Plus, Zap, ArrowUpCircle, TrendingUp, Coins, Award, Music } from 'lucide-react';
 import { Mascot } from '../types';
 import { MascotAvatar } from './MascotAvatar';
-import { SoundEngine, playGeminiTTS, playFallbackMascotVoice } from '../utils/sound';
+import { SoundEngine } from '../utils/sound';
 import { MAX_MASCOT_LEVEL, getMascotUpgradeCost, calculateMascotMultiplier } from '../utils/mascotLeveling';
 
 interface MascotDetailModalProps {
@@ -28,43 +28,41 @@ export const MascotDetailModal: React.FC<MascotDetailModalProps> = ({
   onClose,
 }) => {
   const [selectedMascotId, setSelectedMascotId] = useState<string>(activeMascotId || allMascots[0]?.id);
-  const [isPlayingTts, setIsPlayingTts] = useState(false);
-  const [voiceQuote, setVoiceQuote] = useState<string | null>(null);
+  const [isSqueaking, setIsSqueaking] = useState(false);
+  const [soundNoise, setSoundNoise] = useState<string | null>(null);
+  const [noiseStyle, setNoiseStyle] = useState<'squeak' | 'chirp' | 'purr' | 'boing' | 'giggle'>('squeak');
+
+  // Sync selected mascot when modal opens or active mascot changes
+  useEffect(() => {
+    if (isOpen && activeMascotId) {
+      setSelectedMascotId(activeMascotId);
+    }
+  }, [isOpen, activeMascotId]);
 
   // Sync selected mascot with the latest updated allMascots data (for instant level up display)
   const selectedMascot = allMascots.find((m) => m.id === selectedMascotId) || allMascots[0];
 
-  const handleSpeakMascot = async (mascot: Mascot) => {
-    if (isPlayingTts) return;
-    setIsPlayingTts(true);
-    setVoiceQuote(mascot.cheerQuote);
+  const NOISE_EXPRESSIONS: Record<'squeak' | 'chirp' | 'purr' | 'boing' | 'giggle', string[]> = {
+    squeak: ['*squeeeak!* ✨', '*pip-squeak!* 🐾', '*squeee-pip!* 💖'],
+    chirp: ['*chirp chirp!* 🎶', '*twirrrl-chirp!* 🌸', '*cheep-cheep!* ✨'],
+    purr: ['*purrrrrr~* 💕', '*fuzzy purr!* 💤', '*warm nuzzle purr* 🐾'],
+    boing: ['*boing boing!* 🐰', '*sproing!* ✨', '*bouncy boing!* 🎈'],
+    giggle: ['*tee-hee-hee!* 🌟', '*chuckle-squeak!* 🐾', '*giggle-chirp!* ✨'],
+  };
 
-    try {
-      const response = await fetch('/api/mascot/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: mascot.cheerQuote,
-          voice: mascot.voiceName || 'Kore',
-        }),
-      });
+  const handleMakeNoise = (chosenStyle?: 'squeak' | 'chirp' | 'purr' | 'boing' | 'giggle') => {
+    const style = chosenStyle || noiseStyle;
+    setNoiseStyle(style);
+    SoundEngine.playMascotSqueak(style);
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.audio) {
-          await playGeminiTTS(data.audio, data.sampleRate || 24000);
-        } else {
-          playFallbackMascotVoice(mascot.cheerQuote);
-        }
-      } else {
-        // Fallback to browser synthesis
-        playFallbackMascotVoice(mascot.cheerQuote);
-      }
-    } catch (e) {
-      playFallbackMascotVoice(mascot.cheerQuote);
-    } finally {
-      setIsPlayingTts(false);
-    }
+    const pool = NOISE_EXPRESSIONS[style] || NOISE_EXPRESSIONS.squeak;
+    const randomNoise = pool[Math.floor(Math.random() * pool.length)];
+    setSoundNoise(randomNoise);
+    setIsSqueaking(true);
+
+    setTimeout(() => {
+      setIsSqueaking(false);
+    }, 1100);
   };
 
   if (!isOpen || !selectedMascot) return null;
@@ -156,7 +154,7 @@ export const MascotDetailModal: React.FC<MascotDetailModalProps> = ({
 
         {/* Active Mascot Display Card */}
         <div className="p-3.5 rounded-2xl bg-gradient-to-b from-indigo-950/80 via-slate-900 to-slate-950 border border-indigo-500/30 mb-2.5 flex flex-col items-center text-center">
-          <MascotAvatar mascot={selectedMascot} size="lg" isDancing={isPlayingTts} />
+          <MascotAvatar mascot={selectedMascot} size="lg" isDancing={isSqueaking} />
 
           <div className="flex items-center gap-2 mt-2">
             <h4 className="text-lg font-black text-white">{selectedMascot.name}</h4>
@@ -286,21 +284,77 @@ export const MascotDetailModal: React.FC<MascotDetailModalProps> = ({
             )}
           </div>
 
-          {/* TTS Voice Line Player Button (gemini-3.1-flash-tts-preview) */}
-          <button
-            onClick={() => handleSpeakMascot(selectedMascot)}
-            disabled={isPlayingTts}
-            className="w-full py-2 px-3 rounded-xl bg-slate-900 border border-fuchsia-500/40 hover:bg-slate-800 text-fuchsia-300 text-xs font-bold flex items-center justify-center gap-2 transition-all"
-          >
-            {isPlayingTts ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Volume2 className="w-3.5 h-3.5 text-fuchsia-400" />
+          {/* Mascot Noises & Squeaks Box (Mascots make noises & squeaks, not speech) */}
+          <div className="w-full mt-1 flex flex-col gap-2">
+            {/* Cute Squeak & Noise Bubble */}
+            {isSqueaking && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full p-2.5 rounded-2xl bg-gradient-to-r from-pink-950/80 via-purple-950/80 to-slate-900 border border-pink-400/50 text-pink-200 text-xs shadow-lg backdrop-blur-sm"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5 text-[10px] font-black text-pink-300 uppercase tracking-wider">
+                    <Sparkles className="w-3.5 h-3.5 text-pink-400 animate-spin" />
+                    <span>{selectedMascot.name} Squeaks!</span>
+                  </div>
+                  {/* Bouncing Cute Equalizer Bars */}
+                  <div className="flex items-end gap-1 h-3">
+                    <span className="w-1 bg-pink-400 rounded-full animate-bounce [animation-delay:0ms] h-full" />
+                    <span className="w-1 bg-fuchsia-400 rounded-full animate-bounce [animation-delay:150ms] h-3/4" />
+                    <span className="w-1 bg-amber-300 rounded-full animate-bounce [animation-delay:300ms] h-full" />
+                    <span className="w-1 bg-cyan-400 rounded-full animate-bounce [animation-delay:75ms] h-2/3" />
+                  </div>
+                </div>
+                <p className="text-sm font-black text-amber-300 italic leading-relaxed text-center tracking-wide">
+                  {soundNoise || selectedMascot.cheerQuote}
+                </p>
+              </motion.div>
             )}
-            <span>
-              {isPlayingTts ? 'Speaking...' : `Hear ${selectedMascot.name}'s Voice (TTS)`}
-            </span>
-          </button>
+
+            {/* Noise & Squeak Style Selector Chips */}
+            <div className="flex items-center justify-between gap-1 bg-slate-950/80 p-1.5 rounded-xl border border-slate-800">
+              <span className="text-[10px] text-slate-400 font-bold pl-1 flex items-center gap-1">
+                <Music className="w-3 h-3 text-pink-400" />
+                <span>Noise:</span>
+              </span>
+              <div className="flex items-center gap-1">
+                {[
+                  { id: 'squeak', label: '🐥 Squeak' },
+                  { id: 'chirp', label: '🐣 Chirp' },
+                  { id: 'purr', label: '🐱 Purr' },
+                  { id: 'boing', label: '🐰 Boing' },
+                  { id: 'giggle', label: '✨ Giggle' },
+                ].map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleMakeNoise(item.id as any)}
+                    className={`px-1.5 py-0.5 rounded-lg text-[10px] font-black transition-all ${
+                      noiseStyle === item.id
+                        ? 'bg-gradient-to-r from-pink-500 to-amber-400 text-slate-950 shadow-sm'
+                        : 'bg-slate-900 text-slate-400 hover:text-slate-200'
+                    }`}
+                    title={`Make ${selectedMascot.name} ${item.id}!`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Interactive Squeak Button */}
+            <motion.button
+              whileTap={{ scale: 0.96 }}
+              onClick={() => handleMakeNoise()}
+              className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-purple-950 via-slate-900 to-pink-950 border border-pink-500/40 hover:border-pink-400 text-pink-300 text-xs font-black flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-[0_0_15px_rgba(236,72,153,0.3)] active:scale-98"
+            >
+              <Volume2 className="w-3.5 h-3.5 text-pink-400 animate-pulse" />
+              <span>
+                Make {selectedMascot.name} Squeak! 🐾
+              </span>
+            </motion.button>
+          </div>
         </div>
 
         {/* Action Button: Equip Mascot */}

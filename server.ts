@@ -42,13 +42,20 @@ app.post("/api/mascot/tts", async (req, res) => {
       });
     }
 
-    // Supported voices: Puck, Charon, Kore, Fenrir, Zephyr
-    const validVoices = ["Puck", "Charon", "Kore", "Fenrir", "Zephyr"];
-    const selectedVoice = validVoices.includes(voice) ? voice : "Kore";
+    // Supported voices: Puck, Kore, Aoede, Charon, Fenrir, Zephyr
+    // Explicitly re-route deep/old voices (Fenrir, Zephyr, Charon) to joyful, cute mascot voices (Puck or Kore)
+    let selectedVoice = voice;
+    if (voice === "Fenrir" || voice === "Charon" || voice === "Zephyr") {
+      selectedVoice = "Puck";
+    }
+    const validVoices = ["Puck", "Kore", "Aoede", "Charon", "Fenrir", "Zephyr"];
+    if (!validVoices.includes(selectedVoice)) {
+      selectedVoice = "Puck";
+    }
 
     const response = await ai.models.generateContent({
       model: "gemini-3.1-flash-tts-preview",
-      contents: [{ parts: [{ text: `Say cheerfully and adorably in a cute mascot tone: ${text}` }] }],
+      contents: [{ parts: [{ text: text }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
@@ -75,7 +82,7 @@ app.post("/api/mascot/tts", async (req, res) => {
   }
 });
 
-// 2. Image understanding using gemini-3.1-pro-preview
+// 2. Image understanding using gemini-3.8-flash
 app.post("/api/mascot/analyze-photo", async (req, res) => {
   try {
     const { imageBase64, mimeType = "image/jpeg" } = req.body;
@@ -98,7 +105,7 @@ app.post("/api/mascot/analyze-photo", async (req, res) => {
             description: "Slows puzzle timer by 35% and reveals reflex targets in advance.",
             effectType: "slow_time",
           },
-          cheerQuote: "Together we light up the neon board to maximum frequency!",
+          cheerQuote: "*squeee-pip!* ✨ *boing boing!* 🐾",
           originStory: "Scanned from your photo and synthesized through the neon prism dimension.",
         },
       });
@@ -107,6 +114,7 @@ app.post("/api/mascot/analyze-photo", async (req, res) => {
     const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
     const prompt = `Analyze this uploaded photo (which could be a pet, plushie, toy, selfie, drawing, or object) and transform it into an ultra-cute, adorable fuzzy little mascot for a high-speed neon reflex puzzle game! The mascot MUST have adorable multicolored fuzzy hair and a unique personality.
+IMPORTANT: Mascots DO NOT speak human words or sentences; they only make cute noises and squeak!
 
 Respond ONLY with valid JSON in this exact structure:
 {
@@ -120,12 +128,12 @@ Respond ONLY with valid JSON in this exact structure:
     "description": "How this ability helps the player in fast reflex puzzle games",
     "effectType": "one of: bonus_coins, slow_time, auto_deflect, lucky_dice"
   },
-  "cheerQuote": "A cute energetic one-liner the mascot says when you win",
+  "cheerQuote": "A cute squeak and noise sound expression like '*squeee-pip!* ✨ *boing!* 🐾'",
   "originStory": "A 1-sentence fun lore explanation based on what is in the photo"
 }`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.1-pro-preview",
+      model: "gemini-3.8-flash",
       contents: {
         parts: [
           {
@@ -137,6 +145,9 @@ Respond ONLY with valid JSON in this exact structure:
           { text: prompt },
         ],
       },
+      config: {
+        responseMimeType: "application/json",
+      },
     });
 
     const textOutput = response.text || "";
@@ -146,29 +157,33 @@ Respond ONLY with valid JSON in this exact structure:
 
     return res.json({ mascot: mascotData });
   } catch (err: any) {
-    console.error("Photo analysis error:", err);
-    // Provide delightful fallback mascot on failure
+    console.error("Photo analysis error (fallback provided):", err?.message || err);
+    // Provide delightful dynamic fallback mascot on failure or quota limits
+    const seed = Date.now();
+    const fallbackNames = ["Spark-Bunny", "Aura-Puff", "Cosmic-Kitten", "Prism-Fox", "Velvet-Star"];
+    const fallbackName = fallbackNames[seed % fallbackNames.length];
+
     return res.json({
       mascot: {
-        name: "Glow-Bun Sparkle",
-        personality: "Bubbly neon explorer who loves fast beats",
+        name: fallbackName,
+        personality: "Bubbly neon explorer who dances to electronic synth beats!",
         hairColors: ["#ff007f", "#00f0ff", "#ffe600"],
         furColor: "#8b5cf6",
         eyesColor: "#06b6d4",
         uniqueAbility: {
           name: "Neon Supercharge",
-          description: "Awards 2x coins and extends reflex reaction window.",
+          description: "Awards 2x bonus coins and extends puzzle reaction window.",
           effectType: "bonus_coins",
         },
-        cheerQuote: "Paws ready! Let's conquer the next town!",
-        originStory: "Born from cosmic neon stardust inspired by your image.",
+        cheerQuote: "Paws ready! Let's conquer the next puzzle challenge!",
+        originStory: "Synthesized from your uploaded photo via neon quantum frequencies.",
       },
       warning: err?.message,
     });
   }
 });
 
-// 3. Google Search Grounding using gemini-3.5-flash with googleSearch
+// 3. Google Search Grounding using gemini-3.8-flash with googleSearch
 app.get("/api/trivia/daily-search", async (req, res) => {
   try {
     const ai = getGenAI();
@@ -201,7 +216,7 @@ Respond ONLY with a valid JSON object in this exact schema:
 }`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.8-flash",
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],

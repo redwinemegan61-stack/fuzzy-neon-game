@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Dices, Sparkles, Target, Coins, Gift, Star, 
-  Globe, Zap, Swords, Flame, Key, Shield, Cpu, Box, Search, Activity, ChevronRight
+  Globe, Zap, Swords, Flame, Key, Shield, Cpu, Box, Search, Activity, ChevronRight, Gamepad2
 } from 'lucide-react';
 import { BoardTile, Mascot } from '../types';
 import { BOARD_TILES } from '../data/gameData';
@@ -18,6 +18,7 @@ interface GameBoardProps {
   isRolling: boolean;
   onRollDice: () => void;
   onToggleMultiplier: () => void;
+  onOpenPuzzleArcade?: () => void;
   onTileClick?: (tile: BoardTile) => void;
 }
 
@@ -42,7 +43,13 @@ const TileIcon: React.FC<{ name: string; className?: string }> = ({ name, classN
   }
 };
 
-export const GameBoard: React.FC<GameBoardProps> = ({
+// Statically pre-computed tile slices
+const TOP_TILES = BOARD_TILES.slice(0, 5);
+const RIGHT_TILES = BOARD_TILES.slice(5, 8);
+const BOTTOM_TILES = [...BOARD_TILES.slice(8, 13)].reverse();
+const LEFT_TILES = [...BOARD_TILES.slice(13, 16)].reverse();
+
+export const GameBoard: React.FC<GameBoardProps> = React.memo(({
   currentTileIndex,
   rolls,
   maxRolls,
@@ -51,6 +58,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
   isRolling,
   onRollDice,
   onToggleMultiplier,
+  onOpenPuzzleArcade,
   onTileClick,
 }) => {
   const [diceVisuals, setDiceVisuals] = useState<[number, number]>([3, 4]);
@@ -65,15 +73,10 @@ export const GameBoard: React.FC<GameBoardProps> = ({
     onRollDice();
   };
 
-  // Group tiles: 16 tiles arranged around a rectangle border
-  // Top: tiles 0, 1, 2, 3, 4
-  // Right: tiles 5, 6, 7
-  // Bottom: tiles 8, 9, 10, 11, 12
-  // Left: tiles 13, 14, 15
-  const topTiles = BOARD_TILES.slice(0, 5);
-  const rightTiles = BOARD_TILES.slice(5, 8);
-  const bottomTiles = BOARD_TILES.slice(8, 13).reverse();
-  const leftTiles = BOARD_TILES.slice(13, 16).reverse();
+  const topTiles = TOP_TILES;
+  const rightTiles = RIGHT_TILES;
+  const bottomTiles = BOTTOM_TILES;
+  const leftTiles = LEFT_TILES;
 
   const currentTile = BOARD_TILES[currentTileIndex] || BOARD_TILES[0];
 
@@ -241,8 +244,36 @@ export const GameBoard: React.FC<GameBoardProps> = ({
         </div>
       </div>
 
+      {/* Quick Play Reflex Puzzles Arcade Shortcut */}
+      {onOpenPuzzleArcade && (
+        <motion.button
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={onOpenPuzzleArcade}
+          className="w-full mt-2 py-2 px-3 rounded-2xl bg-gradient-to-r from-fuchsia-950/80 via-indigo-950/80 to-cyan-950/80 border border-fuchsia-500/50 hover:border-cyan-400 text-slate-100 flex items-center justify-between shadow-[0_0_15px_rgba(255,0,127,0.2)] transition-all cursor-pointer group"
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-7 h-7 rounded-xl bg-fuchsia-500/20 text-fuchsia-300 flex items-center justify-center border border-fuchsia-400/30 group-hover:scale-110 transition-transform">
+              <Gamepad2 className="w-4 h-4 animate-pulse" />
+            </span>
+            <div className="text-left">
+              <div className="text-white text-xs font-black uppercase tracking-wide flex items-center gap-1.5">
+                <span>Play Reflex Puzzles</span>
+                <span className="text-[9px] bg-gradient-to-r from-fuchsia-500 to-pink-500 text-white font-black px-1.5 py-0.2 rounded-full shadow-sm">
+                  Arcade
+                </span>
+              </div>
+              <div className="text-[9px] text-slate-400">Pulse Matrix • Laser Slicer • Cyber Lock</div>
+            </div>
+          </div>
+          <span className="text-[10px] font-black text-cyan-300 bg-cyan-950/80 border border-cyan-500/40 px-2.5 py-1 rounded-xl shadow-xs group-hover:bg-cyan-900 transition-colors">
+            PLAY NOW ⚡
+          </span>
+        </motion.button>
+      )}
+
       {/* Main Roll Action Footer Controls */}
-      <div className="w-full mt-3 flex items-center gap-2">
+      <div className="w-full mt-2 flex items-center gap-2">
         {/* Multiplier Toggle Button */}
         <button
           onClick={onToggleMultiplier}
@@ -271,7 +302,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({
       </div>
     </div>
   );
-};
+});
 
 // Sub-component for individual board tile
 interface TileCardProps {
@@ -282,7 +313,7 @@ interface TileCardProps {
   onClick?: () => void;
 }
 
-const TileCard: React.FC<TileCardProps> = ({
+const TileCard: React.FC<TileCardProps> = React.memo(({
   tile,
   isCurrent,
   activeMascot,
@@ -344,4 +375,4 @@ const TileCard: React.FC<TileCardProps> = ({
       </div>
     </div>
   );
-};
+});
