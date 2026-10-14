@@ -252,16 +252,21 @@ export const LaserStackPuzzleView: React.FC<LaserStackPuzzleViewProps> = ({
                 return (
                   <div
                     key={cIdx}
-                    className={`h-4 rounded-md transition-all ${
+                    className={`h-4.5 rounded-md transition-all relative overflow-hidden ${
                       isMoving
-                        ? 'bg-gradient-to-r from-fuchsia-500 to-rose-400 shadow-[0_0_12px_rgba(255,0,127,0.9)] border border-white'
+                        ? 'bg-gradient-to-b from-fuchsia-400 via-rose-500 to-rose-600 shadow-[0_0_14px_rgba(255,0,127,0.9)] border-2 border-white'
                         : isLit
                         ? rIdx >= STACKER_CONFIG.majorPrizeFloor
-                          ? 'bg-gradient-to-r from-amber-400 to-yellow-300 shadow-[0_0_10px_rgba(251,191,36,0.7)] border border-yellow-200'
-                          : 'bg-gradient-to-r from-cyan-400 to-blue-500 shadow-[0_0_8px_rgba(0,240,255,0.6)] border border-cyan-300/60'
+                          ? 'bg-gradient-to-b from-yellow-200 via-amber-400 to-yellow-600 shadow-[0_0_12px_rgba(251,191,36,0.8)] border border-yellow-100'
+                          : 'bg-gradient-to-b from-cyan-200 via-cyan-400 to-blue-600 shadow-[0_0_10px_rgba(0,240,255,0.7)] border border-cyan-200'
                         : 'bg-slate-900/60 border border-slate-800/40'
                     }`}
-                  />
+                  >
+                    {/* Glass Bevel Top Specular Glint */}
+                    {(isMoving || isLit) && (
+                      <div className="absolute top-0 inset-x-0.5 h-[1.5px] rounded-full bg-white/80 pointer-events-none" />
+                    )}
+                  </div>
                 );
               })}
             </div>

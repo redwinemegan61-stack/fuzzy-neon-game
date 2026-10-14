@@ -495,19 +495,23 @@ export const BlockStackerPuzzleView: React.FC<BlockStackerPuzzleViewProps> = ({
               return (
                 <div
                   key={`${rIdx}-${cIdx}`}
-                  className={`rounded-xs transition-all ${
+                  className={`rounded-xs transition-all relative overflow-hidden ${
                     activeColor
-                      ? 'shadow-[0_0_10px_rgba(0,240,255,0.8)] border border-white/80'
+                      ? 'shadow-[0_0_12px_rgba(0,240,255,0.9)] border-2 border-white'
                       : cellColor
-                      ? 'shadow-xs border border-white/40'
+                      ? 'shadow-xs border border-white/50'
                       : isGhost
-                      ? 'border border-cyan-400/40 bg-cyan-950/20'
-                      : 'bg-slate-900/50 border border-slate-800/20'
+                      ? 'border border-cyan-400/50 bg-cyan-950/30'
+                      : 'bg-slate-900/40 border border-slate-800/20'
                   }`}
                   style={{
                     backgroundColor: activeColor || cellColor || undefined,
                   }}
-                />
+                >
+                  {(activeColor || cellColor) && (
+                    <div className="absolute top-0 inset-x-0 h-[1.5px] bg-white/70 pointer-events-none" />
+                  )}
+                </div>
               );
             })
           )}

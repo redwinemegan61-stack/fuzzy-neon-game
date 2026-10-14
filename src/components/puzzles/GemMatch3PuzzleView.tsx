@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, Trophy, RotateCcw, Zap, Flame, Star, Volume2 } from 'lucide-react';
+import { Sparkles, Trophy, RotateCcw, Zap, Flame, Star, Volume2, HelpCircle } from 'lucide-react';
 import { Mascot } from '../../types';
 import { SoundEngine } from '../../utils/sound';
+import { GemEmblem } from './GemEmblem';
 import confetti from 'canvas-confetti';
 
 interface GemMatch3PuzzleViewProps {
@@ -25,48 +26,51 @@ const GRID_SIZE = 7;
 const TARGET_SCORE = 2200;
 const INITIAL_MOVES = 18;
 
-const GEM_CONFIGS: Record<GemType, { label: string; icon: string; bgGradient: string; border: string; glow: string }> = {
+export const GEM_CONFIGS: Record<
+  GemType,
+  { label: string; bgGradient: string; border: string; glow: string; particleColor: string }
+> = {
   ruby: {
-    label: 'Ruby Heart',
-    icon: '💎',
-    bgGradient: 'from-rose-500 via-red-600 to-rose-700',
-    border: 'border-rose-400',
-    glow: 'rgba(244,63,94,0.6)',
+    label: 'Ruby Octagon',
+    bgGradient: 'from-rose-500/20 via-red-950/40 to-slate-950/80',
+    border: 'border-rose-400/60',
+    glow: 'rgba(244,63,94,0.5)',
+    particleColor: '#f43f5e',
   },
   emerald: {
-    label: 'Emerald Star',
-    icon: '💚',
-    bgGradient: 'from-emerald-400 via-emerald-600 to-teal-700',
-    border: 'border-emerald-300',
-    glow: 'rgba(52,211,153,0.6)',
+    label: 'Emerald Step',
+    bgGradient: 'from-emerald-500/20 via-emerald-950/40 to-slate-950/80',
+    border: 'border-emerald-300/60',
+    glow: 'rgba(52,211,153,0.5)',
+    particleColor: '#10b981',
   },
   sapphire: {
-    label: 'Sapphire Orb',
-    icon: '🔷',
-    bgGradient: 'from-cyan-400 via-blue-600 to-indigo-700',
-    border: 'border-cyan-300',
-    glow: 'rgba(56,189,248,0.6)',
+    label: 'Sapphire Lozenge',
+    bgGradient: 'from-cyan-500/20 via-blue-950/40 to-slate-950/80',
+    border: 'border-cyan-300/60',
+    glow: 'rgba(56,189,248,0.5)',
+    particleColor: '#38bdf8',
   },
   citrine: {
-    label: 'Citrine Sun',
-    icon: '⭐',
-    bgGradient: 'from-amber-300 via-yellow-500 to-amber-600',
-    border: 'border-yellow-200',
-    glow: 'rgba(250,204,21,0.6)',
+    label: 'Citrine Sunburst',
+    bgGradient: 'from-amber-400/20 via-yellow-950/40 to-slate-950/80',
+    border: 'border-yellow-300/60',
+    glow: 'rgba(250,204,21,0.5)',
+    particleColor: '#eab308',
   },
   amethyst: {
-    label: 'Amethyst Moon',
-    icon: '🔮',
-    bgGradient: 'from-purple-400 via-fuchsia-600 to-purple-800',
-    border: 'border-fuchsia-300',
-    glow: 'rgba(217,70,239,0.6)',
+    label: 'Amethyst Prism',
+    bgGradient: 'from-purple-500/20 via-fuchsia-950/40 to-slate-950/80',
+    border: 'border-fuchsia-300/60',
+    glow: 'rgba(217,70,239,0.5)',
+    particleColor: '#d946ef',
   },
   topaz: {
-    label: 'Topaz Flame',
-    icon: '🔶',
-    bgGradient: 'from-orange-400 via-amber-600 to-orange-700',
-    border: 'border-orange-300',
-    glow: 'rgba(251,146,60,0.6)',
+    label: 'Topaz Cushion',
+    bgGradient: 'from-orange-500/20 via-orange-950/40 to-slate-950/80',
+    border: 'border-orange-300/60',
+    glow: 'rgba(251,146,60,0.5)',
+    particleColor: '#f97316',
   },
 };
 
@@ -93,12 +97,10 @@ function generateCleanBoard(): GemCell[][] {
     const row: GemCell[] = [];
     for (let c = 0; c < GRID_SIZE; c++) {
       let allowedTypes = [...GEM_TYPES];
-      // Avoid 3 in a row horizontally
-      if (c >= 2 && row[c - 1].type === row[c - 2].type) {
+      if (c >= 2 && row[c - 1]?.type === row[c - 2]?.type) {
         allowedTypes = allowedTypes.filter((t) => t !== row[c - 1].type);
       }
-      // Avoid 3 in a row vertically
-      if (r >= 2 && board[r - 1][c].type === board[r - 2][c].type) {
+      if (r >= 2 && board[r - 1]?.[c]?.type === board[r - 2]?.[c]?.type) {
         allowedTypes = allowedTypes.filter((t) => t !== board[r - 1][c].type);
       }
       const chosenType = allowedTypes[Math.floor(Math.random() * allowedTypes.length)];
@@ -109,6 +111,14 @@ function generateCleanBoard(): GemCell[][] {
   return board;
 }
 
+interface FloatingScore {
+  id: number;
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+}
+
 export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
   activeMascot,
   playerLevel,
@@ -117,6 +127,11 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
 }) => {
   const [board, setBoard] = useState<GemCell[][]>(generateCleanBoard);
   const [selectedPos, setSelectedPos] = useState<{ r: number; c: number } | null>(null);
+  const [swappingPair, setSwappingPair] = useState<{ r1: number; c1: number; r2: number; c2: number } | null>(null);
+  const [explodingCoords, setExplodingCoords] = useState<Set<string>>(new Set());
+  const [floatingScores, setFloatingScores] = useState<FloatingScore[]>([]);
+  const [hintPair, setHintPair] = useState<[{ r: number; c: number }, { r: number; c: number }] | null>(null);
+
   const [score, setScore] = useState(0);
   const [movesLeft, setMovesLeft] = useState(INITIAL_MOVES);
   const [comboCount, setComboCount] = useState(0);
@@ -125,22 +140,17 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
   const [hasWon, setHasWon] = useState(false);
   const [isGameOver, setIsGameOver] = useState(false);
 
-  // Restart puzzle
-  const handleRestart = () => {
-    setBoard(generateCleanBoard());
-    setSelectedPos(null);
-    setScore(0);
-    setMovesLeft(INITIAL_MOVES);
-    setComboCount(0);
-    setComboBanner(null);
-    setIsProcessing(false);
-    setHasWon(false);
-    setIsGameOver(false);
-    SoundEngine.playBoardHop();
-  };
+  // Swipe gesture tracking
+  const pointerStartRef = useRef<{ r: number; c: number; x: number; y: number } | null>(null);
+  const idleTimerRef = useRef<any>(null);
 
   // Find all horizontal and vertical matches
-  const findMatches = (currentBoard: GemCell[][]): { matches: Set<string>; specialCreations: { r: number; c: number; special: SpecialType; type: GemType }[] } => {
+  const findMatches = (
+    currentBoard: GemCell[][]
+  ): {
+    matches: Set<string>;
+    specialCreations: { r: number; c: number; special: SpecialType; type: GemType }[];
+  } => {
     const matchedCoords = new Set<string>();
     const specialCreations: { r: number; c: number; special: SpecialType; type: GemType }[] = [];
 
@@ -148,7 +158,7 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
     for (let r = 0; r < GRID_SIZE; r++) {
       let matchLen = 1;
       for (let c = 0; c < GRID_SIZE; c++) {
-        const checkNext = c < GRID_SIZE - 1 && currentBoard[r][c].type === currentBoard[r][c + 1].type;
+        const checkNext = c < GRID_SIZE - 1 && currentBoard[r][c]?.type === currentBoard[r][c + 1]?.type;
         if (checkNext) {
           matchLen += 1;
         } else {
@@ -172,7 +182,7 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
     for (let c = 0; c < GRID_SIZE; c++) {
       let matchLen = 1;
       for (let r = 0; r < GRID_SIZE; r++) {
-        const checkNext = r < GRID_SIZE - 1 && currentBoard[r][c].type === currentBoard[r + 1][c].type;
+        const checkNext = r < GRID_SIZE - 1 && currentBoard[r][c]?.type === currentBoard[r + 1][c]?.type;
         if (checkNext) {
           matchLen += 1;
         } else {
@@ -195,154 +205,234 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
     return { matches: matchedCoords, specialCreations };
   };
 
+  // Find a valid potential move on the board for the idle hint
+  const findPossibleMove = useCallback(
+    (b: GemCell[][]): [{ r: number; c: number }, { r: number; c: number }] | null => {
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          // Try swap right
+          if (c < GRID_SIZE - 1) {
+            const testBoard = b.map((row) => [...row]);
+            const temp = testBoard[r][c];
+            testBoard[r][c] = testBoard[r][c + 1];
+            testBoard[r][c + 1] = temp;
+            if (findMatches(testBoard).matches.size > 0) {
+              return [
+                { r, c },
+                { r, c: c + 1 },
+              ];
+            }
+          }
+          // Try swap down
+          if (r < GRID_SIZE - 1) {
+            const testBoard = b.map((row) => [...row]);
+            const temp = testBoard[r][c];
+            testBoard[r][c] = testBoard[r + 1][c];
+            testBoard[r + 1][c] = temp;
+            if (findMatches(testBoard).matches.size > 0) {
+              return [
+                { r, c },
+                { r: r + 1, c },
+              ];
+            }
+          }
+        }
+      }
+      return null;
+    },
+    []
+  );
+
+  // Reset idle hint timer
+  const resetIdleHint = useCallback(() => {
+    setHintPair(null);
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => {
+      if (!isProcessing && !hasWon && !isGameOver) {
+        const move = findPossibleMove(board);
+        if (move) setHintPair(move);
+      }
+    }, 4500);
+  }, [board, isProcessing, hasWon, isGameOver, findPossibleMove]);
+
+  useEffect(() => {
+    resetIdleHint();
+    return () => {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, [resetIdleHint]);
+
+  // Restart puzzle
+  const handleRestart = () => {
+    setBoard(generateCleanBoard());
+    setSelectedPos(null);
+    setSwappingPair(null);
+    setExplodingCoords(new Set());
+    setFloatingScores([]);
+    setHintPair(null);
+    setScore(0);
+    setMovesLeft(INITIAL_MOVES);
+    setComboCount(0);
+    setComboBanner(null);
+    setIsProcessing(false);
+    setHasWon(false);
+    setIsGameOver(false);
+    SoundEngine.playBoardHop();
+    resetIdleHint();
+  };
+
   // Resolve matches, apply bomb explosions, trigger cascades & gravity
-  const processMatchesAndCascades = useCallback(async (initialBoard: GemCell[][], comboMultiplier = 1) => {
-    let currentBoard = initialBoard.map((row) => [...row]);
-    let totalEarnedScore = 0;
-    let cascadeStep = comboMultiplier;
+  const processMatchesAndCascades = useCallback(
+    async (initialBoard: GemCell[][], comboMultiplier = 1) => {
+      let currentBoard = initialBoard.map((row) => [...row]);
+      let totalEarnedScore = 0;
+      let cascadeStep = comboMultiplier;
 
-    while (true) {
-      const { matches, specialCreations } = findMatches(currentBoard);
-      if (matches.size === 0) break;
+      while (true) {
+        const { matches, specialCreations } = findMatches(currentBoard);
+        if (matches.size === 0) break;
 
-      // Expand matches if any matched cell is a bomb
-      const allExploded = new Set<string>(matches);
-      matches.forEach((coord) => {
-        const [r, c] = coord.split(',').map(Number);
-        const cell = currentBoard[r][c];
-        if (cell.special === 'bomb') {
-          // Explode 3x3
-          for (let dr = -1; dr <= 1; dr++) {
-            for (let dc = -1; dc <= 1; dc++) {
-              const nr = r + dr;
-              const nc = c + dc;
-              if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
-                allExploded.add(`${nr},${nc}`);
+        // Expand matches if any matched cell is a bomb
+        const allExploded = new Set<string>(matches);
+        matches.forEach((coord) => {
+          const [r, c] = coord.split(',').map(Number);
+          const cell = currentBoard[r]?.[c];
+          if (cell && cell.special === 'bomb') {
+            for (let dr = -1; dr <= 1; dr++) {
+              for (let dc = -1; dc <= 1; dc++) {
+                const nr = r + dr;
+                const nc = c + dc;
+                if (nr >= 0 && nr < GRID_SIZE && nc >= 0 && nc < GRID_SIZE) {
+                  allExploded.add(`${nr},${nc}`);
+                }
+              }
+            }
+          }
+        });
+
+        // Score calculation & floating popups
+        const stepScore = allExploded.size * 55 * cascadeStep;
+        totalEarnedScore += stepScore;
+
+        // Visual flash of exploding cells
+        setExplodingCoords(new Set(allExploded));
+
+        // Add floating score chip at first match location
+        const firstCoord = Array.from(allExploded)[0];
+        if (firstCoord) {
+          const [fr, fc] = firstCoord.split(',').map(Number);
+          const newFloating: FloatingScore = {
+            id: Date.now() + Math.random(),
+            x: ((fc + 0.5) / GRID_SIZE) * 100,
+            y: ((fr + 0.5) / GRID_SIZE) * 100,
+            text: `+${stepScore}`,
+            color: cascadeStep >= 2 ? '#f59e0b' : '#38bdf8',
+          };
+          setFloatingScores((prev) => [...prev.slice(-4), newFloating]);
+        }
+
+        // Sound & visuals for combo
+        SoundEngine.playCoinChime();
+        if (cascadeStep >= 2) {
+          const phrases = ['Sweet!', 'Tasty Crush!', 'Hyper Blast!', 'Sugar Frenzy!', 'Mega Cascade!'];
+          const chosen = phrases[Math.min(cascadeStep - 2, phrases.length - 1)];
+          setComboBanner(`${chosen} (x${cascadeStep})`);
+        }
+
+        // Wait for pop animation to finish
+        await new Promise((res) => setTimeout(res, 220));
+
+        // Clear exploded cells & spawn specials
+        for (let r = 0; r < GRID_SIZE; r++) {
+          for (let c = 0; c < GRID_SIZE; c++) {
+            if (allExploded.has(`${r},${c}`)) {
+              const specialToSpawn = specialCreations.find((sc) => sc.r === r && sc.c === c);
+              if (specialToSpawn) {
+                currentBoard[r][c] = createGemCell(specialToSpawn.type, specialToSpawn.special);
+              } else {
+                currentBoard[r][c] = null as any;
               }
             }
           }
         }
-      });
 
-      // Score calculation
-      const stepScore = allExploded.size * 50 * cascadeStep;
-      totalEarnedScore += stepScore;
+        setExplodingCoords(new Set());
 
-      // Sound & visuals for combo
-      SoundEngine.playCoinChime();
-      if (cascadeStep >= 2) {
-        const phrases = ['Sweet!', 'Tasty Crush!', 'Hyper Blast!', 'Sugar Frenzy!', 'Mega Cascade!'];
-        const chosen = phrases[Math.min(cascadeStep - 2, phrases.length - 1)];
-        setComboBanner(`${chosen} (x${cascadeStep})`);
-      }
-
-      // Clear exploded cells
-      for (let r = 0; r < GRID_SIZE; r++) {
+        // Gravity: pull gems down
         for (let c = 0; c < GRID_SIZE; c++) {
-          if (allExploded.has(`${r},${c}`)) {
-            // Check if this position spawns a special gem
-            const specialToSpawn = specialCreations.find((sc) => sc.r === r && sc.c === c);
-            if (specialToSpawn) {
-              currentBoard[r][c] = createGemCell(specialToSpawn.type, specialToSpawn.special);
+          const validGems: GemCell[] = [];
+          for (let r = GRID_SIZE - 1; r >= 0; r--) {
+            if (currentBoard[r][c] !== null && currentBoard[r][c] !== undefined) {
+              validGems.push(currentBoard[r][c]);
+            }
+          }
+          // Fill from bottom up
+          for (let r = GRID_SIZE - 1; r >= 0; r--) {
+            const gemIndex = GRID_SIZE - 1 - r;
+            if (gemIndex < validGems.length) {
+              currentBoard[r][c] = validGems[gemIndex];
             } else {
-              currentBoard[r][c] = null as any;
+              // New gem dropped from top
+              currentBoard[r][c] = createGemCell();
             }
           }
         }
+
+        cascadeStep += 1;
+        setBoard(currentBoard.map((row) => [...row]));
+        // Brief pause for gravity settle
+        await new Promise((res) => setTimeout(res, 200));
       }
 
-      // Gravity: pull gems down
-      for (let c = 0; c < GRID_SIZE; c++) {
-        const validGems: GemCell[] = [];
-        for (let r = GRID_SIZE - 1; r >= 0; r--) {
-          if (currentBoard[r][c] !== null && currentBoard[r][c] !== undefined) {
-            validGems.push(currentBoard[r][c]);
-          }
+      setScore((prev) => {
+        const newScore = prev + totalEarnedScore;
+        // Check win condition
+        if (newScore >= TARGET_SCORE && !hasWon) {
+          setHasWon(true);
+          SoundEngine.playUpgradeFanfare();
+          confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
+          onCompleteReward({
+            coins: Math.round(5500 + playerLevel * 1200 * activeMascot.uniqueAbility.multiplier),
+            xp: 250 + playerLevel * 50,
+            diceBonus: 4,
+            sourceTitle: 'Gem Match-3 Crush Victory',
+          });
         }
-        // Fill from bottom up
-        for (let r = GRID_SIZE - 1; r >= 0; r--) {
-          const gemIndex = (GRID_SIZE - 1) - r;
-          if (gemIndex < validGems.length) {
-            currentBoard[r][c] = validGems[gemIndex];
-          } else {
-            // New gem dropped from top
-            currentBoard[r][c] = createGemCell();
-          }
-        }
-      }
+        return newScore;
+      });
 
-      cascadeStep += 1;
-      // Brief pause for juiciness
-      await new Promise((res) => setTimeout(res, 220));
-      setBoard(currentBoard.map((row) => [...row]));
-    }
+      setComboCount(cascadeStep - 1);
+      setIsProcessing(false);
+      resetIdleHint();
+    },
+    [hasWon, onCompleteReward, playerLevel, activeMascot, resetIdleHint]
+  );
 
-    setScore((prev) => {
-      const newScore = prev + totalEarnedScore;
-      // Check win condition
-      if (newScore >= TARGET_SCORE && !hasWon) {
-        setHasWon(true);
-        SoundEngine.playUpgradeFanfare();
-        confetti({ particleCount: 90, spread: 80, origin: { y: 0.6 } });
-        onCompleteReward({
-          coins: Math.round(5500 + playerLevel * 1200 * activeMascot.uniqueAbility.multiplier),
-          xp: 250 + playerLevel * 50,
-          diceBonus: 4,
-          sourceTitle: 'Gem Match-3 Crush Victory',
-        });
-      }
-      return newScore;
-    });
-
-    setComboCount(cascadeStep - 1);
-    setIsProcessing(false);
-  }, [hasWon, onCompleteReward, playerLevel, activeMascot]);
-
-  // Handle gem click / swap
-  const handleCellClick = async (r: number, c: number) => {
+  // Execute swap between two cells (r1, c1) and (r2, c2)
+  const executeSwap = async (r1: number, c1: number, r2: number, c2: number) => {
     if (isProcessing || hasWon || isGameOver) return;
-
-    if (!selectedPos) {
-      // First click: select gem
-      setSelectedPos({ r, c });
-      SoundEngine.playBoardHop();
-      return;
-    }
-
-    const { r: r1, c: c1 } = selectedPos;
-
-    // Clicked same cell: deselect
-    if (r1 === r && c1 === c) {
-      setSelectedPos(null);
-      return;
-    }
-
-    // Check adjacency (horizontal or vertical neighbor only)
-    const isAdjacent = (Math.abs(r1 - r) === 1 && c1 === c) || (Math.abs(c1 - c) === 1 && r1 === r);
-
-    if (!isAdjacent) {
-      // Not adjacent: select the newly clicked gem instead
-      setSelectedPos({ r, c });
-      SoundEngine.playBoardHop();
-      return;
-    }
-
-    // Process swap
-    setSelectedPos(null);
     setIsProcessing(true);
+    setSelectedPos(null);
+    setHintPair(null);
+    setSwappingPair({ r1, c1, r2, c2 });
 
     const newBoard = board.map((row) => [...row]);
     const gemA = newBoard[r1][c1];
-    const gemB = newBoard[r][c];
+    const gemB = newBoard[r2][c2];
 
     // Rainbow star special match logic
-    if (gemA.special === 'rainbow' || gemB.special === 'rainbow') {
-      const targetColor = gemA.special === 'rainbow' ? gemB.type : gemA.type;
+    if (gemA?.special === 'rainbow' || gemB?.special === 'rainbow') {
+      const targetColor = gemA?.special === 'rainbow' ? gemB?.type : gemA?.type;
       SoundEngine.playLaserHit();
+      newBoard[r1][c1] = gemB;
+      newBoard[r2][c2] = gemA;
+      setBoard(newBoard);
+      setSwappingPair(null);
+
       // Clear all gems of targetColor
       for (let row = 0; row < GRID_SIZE; row++) {
         for (let col = 0; col < GRID_SIZE; col++) {
-          if (newBoard[row][col].type === targetColor || newBoard[row][col].special === 'rainbow') {
+          if (newBoard[row][col]?.type === targetColor || newBoard[row][col]?.special === 'rainbow') {
             newBoard[row][col] = null as any;
           }
         }
@@ -354,7 +444,11 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
 
     // Standard swap
     newBoard[r1][c1] = gemB;
-    newBoard[r][c] = gemA;
+    newBoard[r2][c2] = gemA;
+    setBoard(newBoard);
+
+    // Brief wait for swap visually
+    await new Promise((res) => setTimeout(res, 140));
 
     // Check if swap produces a match
     const { matches } = findMatches(newBoard);
@@ -362,6 +456,7 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
     if (matches.size > 0) {
       // Valid move!
       SoundEngine.playBoardHop();
+      setSwappingPair(null);
       setMovesLeft((m) => {
         const nextMoves = m - 1;
         if (nextMoves <= 0 && score < TARGET_SCORE) {
@@ -369,34 +464,117 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
         }
         return nextMoves;
       });
-      setBoard(newBoard);
       await processMatchesAndCascades(newBoard, 1);
     } else {
-      // Invalid move: bounce back
+      // Invalid move: smoothly animate rebound back
       SoundEngine.playErrorBuzz();
+      await new Promise((res) => setTimeout(res, 180));
+      // Swap back
+      const revertedBoard = newBoard.map((row) => [...row]);
+      revertedBoard[r1][c1] = gemA;
+      revertedBoard[r2][c2] = gemB;
+      setBoard(revertedBoard);
+      setSwappingPair(null);
       setIsProcessing(false);
+      resetIdleHint();
     }
+  };
+
+  // Handle pointer down (for click or swipe start)
+  const handlePointerDown = (r: number, c: number, e: React.PointerEvent) => {
+    if (isProcessing || hasWon || isGameOver) return;
+    pointerStartRef.current = { r, c, x: e.clientX, y: e.clientY };
+  };
+
+  // Handle pointer up (for click resolution or swipe completion)
+  const handlePointerUp = (r: number, c: number, e: React.PointerEvent) => {
+    if (isProcessing || hasWon || isGameOver || !pointerStartRef.current) return;
+
+    const start = pointerStartRef.current;
+    pointerStartRef.current = null;
+
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    const dist = Math.hypot(dx, dy);
+
+    // Threshold for swipe gesture
+    if (dist > 18) {
+      let targetR = start.r;
+      let targetC = start.c;
+
+      if (Math.abs(dx) > Math.abs(dy)) {
+        // Horizontal swipe
+        targetC += dx > 0 ? 1 : -1;
+      } else {
+        // Vertical swipe
+        targetR += dy > 0 ? 1 : -1;
+      }
+
+      // Check bounds
+      if (targetR >= 0 && targetR < GRID_SIZE && targetC >= 0 && targetC < GRID_SIZE) {
+        executeSwap(start.r, start.c, targetR, targetC);
+        return;
+      }
+    }
+
+    // Otherwise, treat as tap/click selection
+    handleCellClick(r, c);
+  };
+
+  // Handle cell click (select or swap with selected)
+  const handleCellClick = (r: number, c: number) => {
+    if (isProcessing || hasWon || isGameOver) return;
+
+    if (!selectedPos) {
+      setSelectedPos({ r, c });
+      SoundEngine.playBoardHop();
+      resetIdleHint();
+      return;
+    }
+
+    const { r: r1, c: c1 } = selectedPos;
+
+    // Clicked same cell: deselect
+    if (r1 === r && c1 === c) {
+      setSelectedPos(null);
+      return;
+    }
+
+    // Check adjacency
+    const isAdjacent = (Math.abs(r1 - r) === 1 && c1 === c) || (Math.abs(c1 - c) === 1 && r1 === r);
+
+    if (!isAdjacent) {
+      // Not adjacent: select the newly clicked gem instead
+      setSelectedPos({ r, c });
+      SoundEngine.playBoardHop();
+      resetIdleHint();
+      return;
+    }
+
+    // Adjacent: execute swap
+    executeSwap(r1, c1, r, c);
   };
 
   const progressPercent = Math.min(100, Math.round((score / TARGET_SCORE) * 100));
 
   return (
-    <div className="w-full flex flex-col gap-2.5 py-1">
+    <div className="w-full flex flex-col gap-2.5 py-1 select-none">
       {/* Top Match-3 Stats Bar */}
-      <div className="flex items-center justify-between bg-slate-900/90 border border-fuchsia-500/40 rounded-2xl px-3 py-2 shadow-lg">
+      <div className="flex items-center justify-between bg-slate-900/90 border border-fuchsia-500/40 rounded-2xl px-3 py-2 shadow-lg backdrop-blur-md">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 border border-pink-300 flex items-center justify-center font-black text-white text-base shadow-md">
-            💎
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-pink-500 via-rose-600 to-purple-700 border-2 border-pink-300 flex items-center justify-center p-1 shadow-md">
+            <GemEmblem type="ruby" className="w-6 h-6 drop-shadow-md" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-black text-white">Gem Match-3 Crush</span>
               <span className="text-[9px] bg-fuchsia-950 text-fuchsia-300 font-bold px-1.5 py-0.2 rounded-full border border-fuchsia-500/30">
-                Candy Style
+                Symmetrical Gems
               </span>
             </div>
             <div className="text-[10px] text-slate-300">
-              Score: <strong className="text-amber-300">{score.toLocaleString()}</strong> / {TARGET_SCORE.toLocaleString()}
+              Score: <strong className="text-amber-300">{score.toLocaleString()}</strong> /{' '}
+              {TARGET_SCORE.toLocaleString()}
             </div>
           </div>
         </div>
@@ -404,13 +582,17 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
         <div className="flex items-center gap-2">
           <div className="text-right">
             <span className="text-[9px] uppercase font-bold text-slate-400">Moves Left</span>
-            <div className={`text-base font-black ${movesLeft <= 3 ? 'text-rose-400 animate-pulse' : 'text-cyan-300'}`}>
+            <div
+              className={`text-base font-black ${
+                movesLeft <= 3 ? 'text-rose-400 animate-pulse' : 'text-cyan-300'
+              }`}
+            >
               {movesLeft}
             </div>
           </div>
           <button
             onClick={handleRestart}
-            className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all shadow-sm"
+            className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all shadow-sm cursor-pointer"
             title="Restart Board"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -422,15 +604,27 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
       <div className="bg-slate-950/90 border border-slate-800 rounded-2xl p-2 shadow-md">
         <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 px-1">
           <span className="flex items-center gap-1">
-            <Star className={`w-3 h-3 ${progressPercent >= 33 ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}`} />
-            <Star className={`w-3 h-3 ${progressPercent >= 66 ? 'text-amber-400 fill-amber-400' : 'text-slate-600'}`} />
-            <Star className={`w-3 h-3 ${progressPercent >= 100 ? 'text-amber-400 fill-amber-400 animate-bounce' : 'text-slate-600'}`} />
+            <Star
+              className={`w-3.5 h-3.5 ${
+                progressPercent >= 33 ? 'text-amber-400 fill-amber-400' : 'text-slate-600'
+              }`}
+            />
+            <Star
+              className={`w-3.5 h-3.5 ${
+                progressPercent >= 66 ? 'text-amber-400 fill-amber-400' : 'text-slate-600'
+              }`}
+            />
+            <Star
+              className={`w-3.5 h-3.5 ${
+                progressPercent >= 100 ? 'text-amber-400 fill-amber-400 animate-bounce' : 'text-slate-600'
+              }`}
+            />
           </span>
           <span className="text-cyan-300 font-black">{progressPercent}% to Victory</span>
         </div>
         <div className="w-full bg-slate-800/80 rounded-full h-2.5 overflow-hidden border border-slate-700/50">
           <motion.div
-            className="h-full bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-amber-400"
+            className="h-full bg-gradient-to-r from-cyan-400 via-fuchsia-500 to-amber-400 shadow-[0_0_10px_rgba(0,240,255,0.8)]"
             initial={{ width: 0 }}
             animate={{ width: `${progressPercent}%` }}
             transition={{ duration: 0.3 }}
@@ -438,11 +632,11 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
         </div>
       </div>
 
-      {/* Sweet Combo Callout Bubble */}
+      {/* Sweet Combo Callout Banner */}
       <AnimatePresence>
         {comboBanner && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.8, y: -10 }}
+            initial={{ opacity: 0, scale: 0.8, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8 }}
             className="w-full py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-pink-500 to-purple-600 text-slate-950 font-black text-center text-xs tracking-wider shadow-lg flex items-center justify-center gap-1.5"
@@ -453,70 +647,117 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Match-3 Board Grid */}
-      <div className="w-full max-w-[340px] mx-auto aspect-square bg-[#07091c] border-2 border-indigo-900/80 rounded-3xl p-2.5 shadow-2xl flex flex-col justify-between select-none relative overflow-hidden">
-        {/* Soft Ambient Board Glow */}
-        <div className="absolute inset-0 bg-radial from-fuchsia-600/10 via-transparent to-transparent pointer-events-none" />
+      {/* Match-3 Board Grid Container */}
+      <div
+        className="w-full max-w-[340px] mx-auto aspect-square bg-[#060818] border-2 border-indigo-900/80 rounded-3xl p-2 shadow-2xl flex flex-col justify-between relative overflow-hidden select-none"
+        style={{ touchAction: 'none' }}
+      >
+        {/* Subtle Ambient Board Radial Glow */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(99,102,241,0.12)_0%,transparent_75%)] pointer-events-none" />
 
+        {/* Board Tiles */}
         {board.map((row, rIdx) => (
           <div key={rIdx} className="grid grid-cols-7 gap-1.5 flex-1">
             {row.map((gem, cIdx) => {
               if (!gem) {
                 return (
                   <div
-                    key={`${rIdx}-${cIdx}`}
-                    className="flex-1 rounded-xl bg-slate-950/40 border border-slate-900"
+                    key={`empty-${rIdx}-${cIdx}`}
+                    className="flex-1 rounded-xl bg-slate-950/30 border border-slate-900/50"
                   />
                 );
               }
 
               const isSelected = selectedPos?.r === rIdx && selectedPos?.c === cIdx;
+              const isExploding = explodingCoords.has(`${rIdx},${cIdx}`);
+              const isHinted =
+                hintPair &&
+                ((hintPair[0].r === rIdx && hintPair[0].c === cIdx) ||
+                  (hintPair[1].r === rIdx && hintPair[1].c === cIdx));
               const config = GEM_CONFIGS[gem.type] || GEM_CONFIGS.ruby;
 
               return (
-                <motion.button
+                <motion.div
                   key={gem.id}
-                  whileTap={{ scale: 0.88 }}
-                  onClick={() => handleCellClick(rIdx, cIdx)}
-                  className={`flex-1 rounded-xl flex items-center justify-center relative transition-all border shadow-sm ${
+                  layoutId={`cell-${gem.id}`}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{
+                    scale: isExploding ? 1.25 : isSelected ? 1.08 : 1,
+                    opacity: isExploding ? 0 : 1,
+                    rotate: isHinted && !isSelected ? [-3, 3, -3, 0] : 0,
+                  }}
+                  transition={{
+                    scale: { duration: isExploding ? 0.2 : 0.15 },
+                    opacity: { duration: 0.18 },
+                    rotate: { repeat: isHinted ? Infinity : 0, duration: 1.2 },
+                  }}
+                  onPointerDown={(e) => handlePointerDown(rIdx, cIdx, e)}
+                  onPointerUp={(e) => handlePointerUp(rIdx, cIdx, e)}
+                  className={`flex-1 rounded-xl p-1 flex items-center justify-center relative cursor-pointer transition-all border shadow-sm ${
                     isSelected
-                      ? 'ring-2 ring-white scale-110 z-20 shadow-[0_0_18px_rgba(255,255,255,0.9)] animate-pulse'
-                      : 'hover:scale-105 active:scale-90'
+                      ? 'ring-2 ring-white scale-108 z-20 shadow-[0_0_20px_rgba(255,255,255,0.9)] animate-pulse'
+                      : isHinted
+                      ? 'ring-1 ring-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]'
+                      : 'hover:scale-104 active:scale-95'
                   } bg-gradient-to-br ${config.bgGradient} ${config.border}`}
                   style={{
                     boxShadow: isSelected
                       ? `0 0 20px ${config.glow}, inset 0 0 8px rgba(255,255,255,0.8)`
-                      : `0 2px 6px ${config.glow}`,
+                      : `0 2px 8px ${config.glow}, inset 0 1px 1px rgba(255,255,255,0.2)`,
                   }}
                 >
-                  {/* Gem Inner Facet Highlight */}
-                  <div className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-white/70 blur-[0.5px]" />
+                  {/* Glass Top Bevel Reflection */}
+                  <div className="absolute top-0.5 inset-x-1.5 h-1.5 rounded-full bg-white/25 blur-[0.4px] pointer-events-none" />
 
-                  {/* Special Gem Icons (Bomb 💣 or Rainbow 🌟) */}
-                  {gem.special === 'rainbow' ? (
-                    <span className="text-base animate-spin filter drop-shadow">🌟</span>
-                  ) : gem.special === 'bomb' ? (
-                    <span className="text-base animate-bounce filter drop-shadow">💣</span>
-                  ) : (
-                    <span className="text-sm select-none drop-shadow-sm">{config.icon}</span>
-                  )}
-                </motion.button>
+                  {/* Symmetrical Vector Gem Emblem */}
+                  <GemEmblem
+                    type={gem.type}
+                    special={gem.special}
+                    isSelected={isSelected}
+                    isMatched={isExploding}
+                    className="w-full h-full p-0.5 drop-shadow-md select-none"
+                  />
+                </motion.div>
               );
             })}
           </div>
         ))}
+
+        {/* Floating Score Chips */}
+        <AnimatePresence>
+          {floatingScores.map((fs) => (
+            <motion.div
+              key={fs.id}
+              initial={{ opacity: 1, scale: 0.6, y: 0 }}
+              animate={{ opacity: 0, scale: 1.25, y: -36 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className="absolute z-30 pointer-events-none font-black text-sm tracking-wider drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
+              style={{
+                left: `${fs.x}%`,
+                top: `${fs.y}%`,
+                transform: 'translate(-50%, -50%)',
+                color: fs.color,
+                textShadow: `0 0 10px ${fs.color}`,
+              }}
+            >
+              {fs.text}
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
 
-      {/* Cheering Mascot & Controls Tip */}
-      <div className="flex items-center justify-between px-2 py-1 bg-slate-950/70 border border-slate-800 rounded-xl">
+      {/* Cheering Mascot, Controls Tip & Multiplier Pill */}
+      <div className="flex items-center justify-between px-2.5 py-1.5 bg-slate-950/80 border border-slate-800 rounded-xl">
         <div className="flex items-center gap-1.5">
           <span className="text-base animate-bounce">🐾</span>
           <span className="text-[10px] text-slate-300">
-            {activeMascot.name}: Match 4 for Bomb 💣, Match 5 for Rainbow Star 🌟!
+            <strong>Swipe or tap</strong> adjacent gems • Match 4 for Bomb, 5 for Rainbow!
           </span>
         </div>
-        <span className="text-[9px] text-amber-300 font-bold bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/40">
-          {activeMascot.uniqueAbility.multiplier}x Multiplier
+        <span className="text-[9px] text-amber-300 font-bold bg-amber-950/80 px-2 py-0.5 rounded-full border border-amber-500/40 flex items-center gap-1">
+          <span>⚡</span>
+          <span>{activeMascot.uniqueAbility.multiplier}x Multiplier</span>
         </span>
       </div>
 
@@ -540,7 +781,7 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
               </div>
               <button
                 onClick={handleRestart}
-                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black text-xs shadow-md hover:brightness-110 active:scale-95 transition-all"
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 text-slate-950 font-black text-xs shadow-md hover:brightness-110 active:scale-95 transition-all cursor-pointer"
               >
                 Play Again ➔
               </button>
@@ -548,7 +789,7 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
             {onWatchAdBonus && (
               <button
                 onClick={onWatchAdBonus}
-                className="w-full py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 hover:brightness-110 active:scale-98 transition-all shadow-lg"
+                className="w-full py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 hover:brightness-110 active:scale-98 transition-all shadow-lg cursor-pointer"
               >
                 <span>🎬 Watch Short Ad for 2X Coins & +10 Extra Dice!</span>
               </button>
@@ -573,7 +814,7 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
             </div>
             <button
               onClick={handleRestart}
-              className="px-3 py-1.5 rounded-xl bg-rose-500 text-white font-black text-xs hover:brightness-110 active:scale-95 transition-all shadow-md"
+              className="px-3 py-1.5 rounded-xl bg-rose-500 text-white font-black text-xs hover:brightness-110 active:scale-95 transition-all shadow-md cursor-pointer"
             >
               Try Again 🔄
             </button>
