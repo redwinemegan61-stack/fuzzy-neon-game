@@ -259,7 +259,7 @@ export const MascotScannerModal: React.FC<MascotScannerModalProps> = ({
                     <div className="absolute inset-0 bg-cyan-950/60 backdrop-blur-xs flex flex-col items-center justify-center">
                       <motion.div
                         animate={{ y: [-30, 30, -30] }}
-                        transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                        transition={{ type: 'tween', duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
                         className="w-full h-1 bg-cyan-400 shadow-[0_0_15px_#00f0ff]"
                       />
                       <Loader2 className="w-8 h-8 text-cyan-300 animate-spin mt-3" />

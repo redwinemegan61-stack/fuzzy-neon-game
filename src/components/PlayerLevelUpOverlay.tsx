@@ -149,6 +149,7 @@ export const PlayerLevelUpOverlay: React.FC<PlayerLevelUpOverlayProps> = ({ data
                 scale: [0.5, 1.2, 0.6] 
               }}
               transition={{ 
+                type: 'tween',
                 duration: 3 + (i % 3) * 0.7, 
                 repeat: Infinity, 
                 delay: i * 0.25,
@@ -190,7 +191,7 @@ export const PlayerLevelUpOverlay: React.FC<PlayerLevelUpOverlayProps> = ({ data
             {/* Pulsing Outer Ring */}
             <motion.div
               animate={{ scale: [1, 1.15, 1], rotate: [0, 180, 360] }}
-              transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
+              transition={{ type: 'tween', duration: 12, repeat: Infinity, ease: 'linear' }}
               className="absolute -inset-4 rounded-full border-2 border-dashed border-amber-400/40 pointer-events-none"
             />
             

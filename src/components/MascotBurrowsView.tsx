@@ -38,6 +38,8 @@ import { UndergroundDenView } from './UndergroundDenView';
 import { FuzzyDollhouseBurrowView } from './FuzzyDollhouseBurrowView';
 import { ThreeBurrowDiorama } from './ThreeBurrowDiorama';
 import { ThreeTownBurrowsMap } from './ThreeTownBurrowsMap';
+import { StandaloneThreeBorough } from './StandaloneThreeBorough';
+import { StandaloneThreeTown } from './StandaloneThreeTown';
 import { MAX_MASCOT_LEVEL } from '../utils/mascotLeveling';
 import {
   MASCOT_NOOK_SIGNATURES,
@@ -88,7 +90,9 @@ export const MascotBurrowsView: React.FC<MascotBurrowsViewProps> = ({
   onUpgradeLandmark,
   duplicateTradesCount = 0,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'3d_town_map' | 'dollhouse' | 'shadowbox' | 'upgrades' | '3d_diorama'>('3d_town_map');
+  const [activeSubTab, setActiveSubTab] = useState<
+    '3d_borough' | '3d_town' | 'dollhouse' | 'shadowbox' | 'upgrades' | '3d_diorama' | '3d_town_map'
+  >('3d_borough');
   const [selectedMascotId, setSelectedMascotId] = useState<string>(activeMascot.id);
   const [activeFeatureModal, setActiveFeatureModal] = useState<BurrowFeature | null>(null);
   const [mascotChatQuote, setMascotChatQuote] = useState<string | null>(null);
@@ -181,36 +185,62 @@ export const MascotBurrowsView: React.FC<MascotBurrowsViewProps> = ({
       transition={{ duration: 0.25 }}
       className="w-full flex flex-col gap-3 py-1"
     >
-      {/* 1. Sub-Navigation Switch: [3D Town Mapped in Burrows] + [Fuzzy Burrow] + [Cavern Explorer] + [Style Catalog] + [3D Diorama] */}
+      {/* 1. Sub-Navigation Switch: Standalone 3D Borough + Standalone 3D Town + Fuzzy Burrow + Cavern Explorer + Style Catalog */}
       <div className="w-full flex flex-col gap-1.5">
-        {/* Prominent 3D Town & Burrows Map Banner */}
-        {town && (
+        {/* Prominent Standalone 3D Experiences Bar */}
+        <div className="w-full grid grid-cols-2 gap-2">
           <button
             onClick={() => {
-              setActiveSubTab('3d_town_map');
+              setActiveSubTab('3d_borough');
               SoundEngine.playTileStep();
             }}
-            className={`w-full py-2.5 px-3.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-between transition-all cursor-pointer relative shadow-lg ${
-              activeSubTab === '3d_town_map'
-                ? 'bg-gradient-to-r from-cyan-400 via-teal-500 to-indigo-600 text-slate-950 shadow-[0_0_20px_rgba(6,182,212,0.6)] border-2 border-white scale-[1.01]'
-                : 'bg-gradient-to-r from-cyan-950/80 via-slate-900 to-indigo-950/80 text-cyan-300 hover:text-white border border-cyan-500/40 hover:border-cyan-400'
+            className={`py-2.5 px-3 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-between transition-all cursor-pointer relative shadow-lg ${
+              activeSubTab === '3d_borough' || activeSubTab === '3d_diorama'
+                ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 text-slate-950 shadow-[0_0_20px_rgba(251,146,60,0.6)] border-2 border-white scale-[1.01]'
+                : 'bg-gradient-to-r from-amber-950/80 via-slate-900 to-indigo-950/80 text-amber-300 hover:text-white border border-amber-500/40 hover:border-amber-400'
             }`}
           >
-            <div className="flex items-center gap-2.5">
-              <span className="text-xl animate-bounce">🗺️</span>
-              <div className="text-left">
-                <span className="block font-black text-xs">3D Mapped Town in Burrows</span>
-                <span className="text-[9.5px] opacity-80 normal-case font-medium block">
-                  Interactive Three.js 3D cutaway: surface town landmarks mapped above underground burrows
+            <div className="flex items-center gap-2 text-left">
+              <span className="text-xl animate-bounce">🏡</span>
+              <div>
+                <span className="block font-black text-xs leading-tight">3D Borough</span>
+                <span className="text-[9px] opacity-80 normal-case font-medium block">
+                  Companion Sanctuary
                 </span>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-full bg-black/25 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border border-white/20">
-              <span>3D WebGL</span>
-              <ChevronRight className="w-3 h-3" />
+            <span className="px-2 py-0.5 rounded-full bg-black/25 text-[8.5px] font-black uppercase border border-white/20">
+              3D
             </span>
           </button>
-        )}
+
+          {town && (
+            <button
+              onClick={() => {
+                setActiveSubTab('3d_town');
+                SoundEngine.playTileStep();
+              }}
+              className={`py-2.5 px-3 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-between transition-all cursor-pointer relative shadow-lg ${
+                activeSubTab === '3d_town' || activeSubTab === '3d_town_map'
+                  ? 'bg-gradient-to-r from-cyan-400 via-teal-500 to-indigo-600 text-slate-950 shadow-[0_0_20px_rgba(6,182,212,0.6)] border-2 border-white scale-[1.01]'
+                  : 'bg-gradient-to-r from-cyan-950/80 via-slate-900 to-indigo-950/80 text-cyan-300 hover:text-white border border-cyan-500/40 hover:border-cyan-400'
+              }`}
+            >
+              <div className="flex items-center gap-2 text-left">
+                <span className="text-xl animate-bounce">🏰</span>
+                <div>
+                  <span className="block font-black text-xs leading-tight">3D Town</span>
+                  <span className="text-[9px] opacity-80 normal-case font-medium block">
+                    Standalone Town World
+                  </span>
+                </div>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-black/25 text-[8.5px] font-black uppercase border border-white/20">
+                3D
+              </span>
+            </button>
+          )}
+        </div>
 
         <div className="w-full grid grid-cols-2 sm:grid-cols-4 p-1.5 rounded-2xl bg-slate-950/90 border border-slate-800 shadow-xl gap-1.5">
           <button
@@ -258,21 +288,6 @@ export const MascotBurrowsView: React.FC<MascotBurrowsViewProps> = ({
             <span>Style Catalog</span>
           </button>
 
-          <button
-            onClick={() => {
-              setActiveSubTab('3d_diorama');
-              SoundEngine.playTileStep();
-            }}
-            className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-              activeSubTab === '3d_diorama'
-                ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 shadow-md font-black scale-102'
-                : 'text-cyan-300 hover:text-white hover:bg-cyan-950/40 border border-cyan-500/30'
-            }`}
-          >
-            <span className="text-sm">🎮</span>
-            <span>3D Diorama</span>
-          </button>
-
           {onOpenTradingPost && (
             <button
               onClick={() => {
@@ -294,20 +309,33 @@ export const MascotBurrowsView: React.FC<MascotBurrowsViewProps> = ({
         </div>
       </div>
 
-      {/* RENDER 3D TOWN MAPPED IN BURROWS (Three.js WebGL) */}
-      {activeSubTab === '3d_town_map' && town && (
-        <ThreeTownBurrowsMap
-          town={town}
-          mascots={mascots}
-          activeMascot={activeMascot}
+      {/* RENDER STANDALONE 3D BOROUGH (Standalone 3D Mascot Sanctuary) */}
+      {(activeSubTab === '3d_borough' || activeSubTab === '3d_diorama') && (
+        <StandaloneThreeBorough
+          mascot={currentMascot}
+          allMascots={mascots}
+          burrow={currentBurrow}
+          onSelectActiveMascot={(id) => {
+            setSelectedMascotId(id);
+            if (onSelectActiveMascot) onSelectActiveMascot(id);
+          }}
           playerCoins={playerCoins}
-          burrows={burrows}
+        />
+      )}
+
+      {/* RENDER STANDALONE 3D TOWN (Standalone WebGL 3D Town) */}
+      {(activeSubTab === '3d_town' || activeSubTab === '3d_town_map') && town && (
+        <StandaloneThreeTown
+          town={town}
+          coins={playerCoins}
+          activeMascot={activeMascot}
+          allMascots={mascots}
           onUpgradeLandmark={onUpgradeLandmark}
           onSelectActiveMascot={onSelectActiveMascot}
         />
       )}
 
-      {/* RENDER DOLLHOUSE 2-LEVEL CUTAWAY VIEW (Exact Match to Illustration) */}
+      {/* RENDER DOLLHOUSE 2-LEVEL HAVEN VIEW */}
       {activeSubTab === 'dollhouse' && (
         <FuzzyDollhouseBurrowView
           mascots={mascots}
@@ -326,7 +354,7 @@ export const MascotBurrowsView: React.FC<MascotBurrowsViewProps> = ({
         />
       )}
 
-      {/* RENDER LIVING VERTICAL SHADOWBOX TAB */}
+      {/* RENDER LIVING CAVERN SANCTUARY TAB */}
       {activeSubTab === 'shadowbox' && (
         <UndergroundDenView
           activeMascot={activeMascot}
@@ -342,99 +370,6 @@ export const MascotBurrowsView: React.FC<MascotBurrowsViewProps> = ({
           onExcavateChamber={onExcavateChamber}
           onSelectActiveMascot={onSelectActiveMascot}
         />
-      )}
-
-      {/* RENDER 3D BURROW DIORAMA (Interactive Three.js 3D Graphics) */}
-      {activeSubTab === '3d_diorama' && (
-        <div className="w-full flex flex-col gap-3">
-          {/* Mascot Picker Carousel */}
-          <div className="w-full overflow-x-auto no-scrollbar flex items-center gap-2 pb-1">
-            {mascots.map((mascot) => {
-              const isSelected = mascot.id === selectedMascotId;
-              const isEquipped = mascot.id === activeMascot.id;
-              const isMaxLvl = mascot.level >= MAX_MASCOT_LEVEL;
-              const burrow = burrows[mascot.id];
-              const burrowLvl = burrow?.features.reduce((sum, f) => sum + f.level, 0) || 0;
-
-              return (
-                <button
-                  key={mascot.id}
-                  onClick={() => {
-                    setSelectedMascotId(mascot.id);
-                    SoundEngine.playTileStep();
-                  }}
-                  className={`flex-shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-2xl border transition-all text-left cursor-pointer relative ${
-                    isSelected
-                      ? isMaxLvl
-                        ? 'bg-gradient-to-r from-amber-950/90 via-slate-900 to-indigo-950/90 border-2 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-102'
-                        : 'bg-slate-800/90 border-2 shadow-lg scale-102'
-                      : isMaxLvl
-                      ? 'bg-slate-900/80 border-amber-500/50 hover:bg-slate-800/60 shadow-[0_0_10px_rgba(251,191,36,0.25)]'
-                      : 'bg-slate-900/60 border-slate-800 hover:bg-slate-800/50 opacity-80'
-                  }`}
-                  style={{
-                    borderColor: isSelected && !isMaxLvl ? mascot.furColor : undefined,
-                    boxShadow: isSelected && !isMaxLvl ? `0 0 16px ${mascot.furColor}33` : undefined,
-                  }}
-                >
-                  <div className="w-9 h-9 flex-shrink-0 relative">
-                    <MascotAvatar mascot={mascot} size="sm" showHairGlow={isMaxLvl} interactive={false} />
-                    {isMaxLvl && (
-                      <span className="absolute -top-1 -right-1 text-[8px] animate-bounce">👑</span>
-                    )}
-                  </div>
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-black text-white">{mascot.name}</span>
-                      {isEquipped && (
-                        <span className="px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[9px] font-black uppercase">
-                          Equipped
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 text-[10px]">
-                      <Home
-                        className={`w-3 h-3 ${
-                          isMaxLvl
-                            ? 'text-amber-300 drop-shadow-[0_0_6px_rgba(251,191,36,0.95)] animate-pulse'
-                            : 'text-amber-400'
-                        }`}
-                      />
-                      <span className={isMaxLvl ? 'text-amber-300 font-black' : 'text-slate-400'}>
-                        Burrow Lv.{burrowLvl} {isMaxLvl ? '✨' : ''}
-                      </span>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Three.js 3D Diorama Stage */}
-          <ThreeBurrowDiorama mascot={currentMascot} burrow={currentBurrow} />
-
-          {/* Diorama Info & Cosmetic Glow Status */}
-          <div className="w-full p-3 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">✨</span>
-              <div>
-                <span className="font-black text-white block">
-                  {currentMascot.name}&apos;s 3D Snuggle Sanctuary
-                </span>
-                <span className="text-[10px] text-slate-400">
-                  {currentMascot.level >= MAX_MASCOT_LEVEL
-                    ? '👑 Max Level Cosmetic Crown Shrine is glowing in the room center!'
-                    : `Reach Lv.${MAX_MASCOT_LEVEL} to unlock the 3D Crown Shrine & Cosmetic Glow!`}
-                </span>
-              </div>
-            </div>
-            {currentMascot.level >= MAX_MASCOT_LEVEL && (
-              <span className="px-2 py-1 rounded-xl bg-amber-400 text-slate-950 font-black text-[10px] uppercase shadow-[0_0_12px_rgba(251,191,36,0.5)]">
-                Max Cosmetic Active
-              </span>
-            )}
-          </div>
-        </div>
       )}
 
       {/* RENDER BURROW ARCHITECTURAL UPGRADES TAB */}
@@ -661,8 +596,8 @@ export const MascotBurrowsView: React.FC<MascotBurrowsViewProps> = ({
                     }
                     transition={
                       isPetting
-                        ? { duration: 0.65, ease: 'easeOut' }
-                        : { duration: 3.5, repeat: Infinity, ease: 'easeInOut' }
+                        ? { type: 'tween', duration: 0.65, ease: 'easeOut' }
+                        : { type: 'tween', duration: 3.5, repeat: Infinity, ease: 'easeInOut' }
                     }
                     className="absolute z-10 top-8 flex items-center justify-center pointer-events-none"
                   >

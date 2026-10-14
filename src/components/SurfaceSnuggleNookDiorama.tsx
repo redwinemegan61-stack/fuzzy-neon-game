@@ -201,7 +201,7 @@ export const SurfaceSnuggleNookDiorama: React.FC<SurfaceSnuggleNookDioramaProps>
             ? { scaleY: [1, 0.92, 0.96, 1], y: [0, 4, 1, 0] }
             : { scaleY: 1, y: 0 }
         }
-        transition={{ duration: 0.55 }}
+        transition={{ type: 'tween', ease: 'easeInOut', duration: 0.55 }}
         className="absolute bottom-1 w-64 h-16 pointer-events-none z-20 flex items-end justify-center"
       >
         <svg viewBox="0 0 240 60" className="w-64 h-16 overflow-visible drop-shadow-md">

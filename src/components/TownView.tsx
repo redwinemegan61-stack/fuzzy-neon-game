@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { SoundEngine } from '../utils/sound';
 import { MascotAvatar } from './MascotAvatar';
+import { StandaloneThreeTown } from './StandaloneThreeTown';
 import confetti from 'canvas-confetti';
 
 interface TownViewProps {
@@ -57,7 +58,7 @@ export const TownView: React.FC<TownViewProps> = React.memo(({
 }) => {
   // Selected landmark for inspector drawer
   const [selectedLandmarkId, setSelectedLandmarkId] = useState<string>(town.landmarks[0]?.id || '');
-  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
+  const [viewMode, setViewMode] = useState<'3d' | 'map' | 'list'>('3d');
   const [buildingEffectId, setBuildingEffectId] = useState<string | null>(null);
 
   // Mascots wandering positions across town paths
@@ -170,23 +171,42 @@ export const TownView: React.FC<TownViewProps> = React.memo(({
               </span>
             </div>
 
-            {/* Toggle Map / List View */}
-            <div className="flex items-center gap-1 mt-1.5 bg-slate-950/80 p-0.5 rounded-lg border border-slate-800">
+            {/* Toggle 3D Town / 2D Map / List View */}
+            <div className="flex items-center gap-1 mt-1.5 bg-slate-950/80 p-0.5 rounded-xl border border-slate-800">
               <button
-                onClick={() => setViewMode('map')}
-                className={`px-2 py-0.5 rounded text-[9px] font-black uppercase transition-all ${
-                  viewMode === 'map' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                onClick={() => {
+                  setViewMode('3d');
+                  SoundEngine.playTileStep();
+                }}
+                className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer ${
+                  viewMode === '3d'
+                    ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-xs'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Map
+                3D Town
               </button>
               <button
-                onClick={() => setViewMode('list')}
-                className={`px-2 py-0.5 rounded text-[9px] font-black uppercase transition-all ${
-                  viewMode === 'list' ? 'bg-cyan-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                onClick={() => {
+                  setViewMode('map');
+                  SoundEngine.playTileStep();
+                }}
+                className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer ${
+                  viewMode === 'map' ? 'bg-cyan-500 text-slate-950 shadow-xs' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                List
+                2D Map
+              </button>
+              <button
+                onClick={() => {
+                  setViewMode('list');
+                  SoundEngine.playTileStep();
+                }}
+                className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer ${
+                  viewMode === 'list' ? 'bg-cyan-500 text-slate-950 shadow-xs' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Cards
               </button>
             </div>
           </div>
@@ -202,23 +222,23 @@ export const TownView: React.FC<TownViewProps> = React.memo(({
           />
         </div>
 
-        {/* 3D Mapped Town in Burrows Shortcut Banner */}
+        {/* Standalone 3D Borough Shortcut Banner */}
         {onOpen3DTownMap && (
           <button
             onClick={() => {
               SoundEngine.playTileStep();
               onOpen3DTownMap();
             }}
-            className="w-full mt-2 py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-950/80 via-slate-900 to-indigo-950/80 hover:border-cyan-400 border border-cyan-500/40 text-cyan-300 hover:text-white flex items-center justify-between transition-all cursor-pointer shadow-md"
+            className="w-full mt-2 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-950/80 via-slate-900 to-indigo-950/80 hover:border-amber-400 border border-amber-500/40 text-amber-300 hover:text-white flex items-center justify-between transition-all cursor-pointer shadow-md"
           >
             <div className="flex items-center gap-2">
-              <span className="text-base animate-bounce">🗺️</span>
+              <span className="text-base animate-bounce">🏡</span>
               <span className="text-[11px] font-black uppercase tracking-wider">
-                Explore Town 3D Mapped in Burrows
+                Tour Companion in Standalone 3D Borough
               </span>
             </div>
-            <span className="text-[9px] font-black bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-400/40 uppercase">
-              3D Cutaway ➔
+            <span className="text-[9px] font-black bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-400/40 uppercase">
+              3D Borough ➔
             </span>
           </button>
         )}
@@ -249,8 +269,17 @@ export const TownView: React.FC<TownViewProps> = React.memo(({
         )}
       </div>
 
-      {/* 2. LIVING INTERACTIVE TOWN MAP DIORAMA */}
-      {viewMode === 'map' ? (
+      {/* 2. LIVING INTERACTIVE TOWN SCENE */}
+      {viewMode === '3d' ? (
+        <StandaloneThreeTown
+          town={town}
+          coins={coins}
+          playerLevel={playerLevel}
+          activeMascot={activeMascot}
+          allMascots={allMascots}
+          onUpgradeLandmark={onUpgradeLandmark}
+        />
+      ) : viewMode === 'map' ? (
         <div className="w-full relative aspect-[4/3] rounded-3xl bg-gradient-to-b from-[#09152b] via-[#0d2238] to-[#0b2824] border-2 border-indigo-900/60 p-3 shadow-2xl overflow-hidden select-none">
           {/* Natural/Neon landscape background detailing */}
           <div className="absolute inset-0 opacity-40 pointer-events-none">
@@ -402,7 +431,7 @@ export const TownView: React.FC<TownViewProps> = React.memo(({
                 {/* Original Animated Mascot Artwork */}
                 <motion.div
                   animate={{ y: [0, -3.5, 0] }}
-                  transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+                  transition={{ type: 'tween', repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
                   className={`w-10 h-10 drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)] ${m.facing === 'left' ? 'scale-x-[-1]' : ''}`}
                 >
                   <MascotAvatar

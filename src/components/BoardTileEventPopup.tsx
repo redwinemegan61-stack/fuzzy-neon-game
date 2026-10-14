@@ -185,7 +185,7 @@ export const BoardTileEventPopup: React.FC<BoardTileEventPopupProps> = ({ event,
         key={`shockwave-${event.id}`}
         initial={{ scale: 0.3, opacity: 0.9 }}
         animate={{ scale: [0.3, 1.4, 2.2], opacity: [0.9, 0.4, 0] }}
-        transition={{ duration: 0.9, ease: 'easeOut' }}
+        transition={{ type: 'tween', duration: 0.9, ease: 'easeOut' }}
         className="absolute w-72 h-72 rounded-full border-4 pointer-events-none"
         style={{ borderColor: theme.primary }}
       />
@@ -195,7 +195,7 @@ export const BoardTileEventPopup: React.FC<BoardTileEventPopupProps> = ({ event,
         key={`shockwave-2-${event.id}`}
         initial={{ scale: 0.2, opacity: 0.7 }}
         animate={{ scale: [0.2, 1.2, 1.9], opacity: [0.7, 0.3, 0] }}
-        transition={{ duration: 1.1, delay: 0.12, ease: 'easeOut' }}
+        transition={{ type: 'tween', duration: 1.1, delay: 0.12, ease: 'easeOut' }}
         className="absolute w-80 h-80 rounded-full border-2 pointer-events-none"
         style={{ borderColor: theme.secondary }}
       />
@@ -270,6 +270,7 @@ export const BoardTileEventPopup: React.FC<BoardTileEventPopupProps> = ({ event,
                 opacity: [0, 1, 0.9, 0],
               }}
               transition={{
+                type: 'tween',
                 duration: 0.85,
                 delay: 0.05 + p.delay,
                 ease: 'easeOut',
@@ -312,7 +313,7 @@ export const BoardTileEventPopup: React.FC<BoardTileEventPopupProps> = ({ event,
             {/* Pulsing Corner Sparkles */}
             <motion.div
               animate={{ scale: [1, 1.4, 1], opacity: [0.7, 1, 0.7] }}
-              transition={{ repeat: Infinity, duration: 1.2 }}
+              transition={{ type: 'tween', ease: 'easeInOut', repeat: Infinity, duration: 1.2 }}
               className="absolute -top-1 -right-1 text-white"
             >
               <Sparkles className="w-5 h-5" />
@@ -450,6 +451,7 @@ export const BoardTileEventPopup: React.FC<BoardTileEventPopupProps> = ({ event,
                     opacity: [1, 1, 0],
                   }}
                   transition={{
+                    type: 'tween',
                     duration: 0.38,
                     delay: token.delay,
                     ease: [0.22, 1, 0.36, 1],

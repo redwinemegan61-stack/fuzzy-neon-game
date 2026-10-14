@@ -1210,7 +1210,7 @@ export default function App() {
     showToast(`🎁 Sponsor Reward: ${reward.label}!`, '#34d399');
   };
 
-  // Custom AI Mascot Created via Gemini 3.1 Pro Photo Scan
+  // Custom AI Mascot Created via Gemini 3.8 Flash Photo Scan
   const handleMascotCreated = (newMascot: Mascot) => {
     setGameState((prev) => ({
       ...prev,
@@ -1726,14 +1726,14 @@ export default function App() {
         onClose={() => setIsMascotModalOpen(false)}
       />
 
-      {/* 3. AI Mascot Scanner (Gemini 3.1 Pro Photo Analysis) */}
+      {/* 3. AI Mascot Scanner (Gemini 3.8 Flash Photo Analysis) */}
       <MascotScannerModal
         isOpen={isScannerOpen}
         onMascotCreated={handleMascotCreated}
         onClose={() => setIsScannerOpen(false)}
       />
 
-      {/* 4. Google Search Grounded Daily Trivia (Gemini 3.5 Flash) */}
+      {/* 4. Google Search Grounded Daily Trivia (Gemini 3.8 Flash) */}
       <TriviaModal
         isOpen={isTriviaOpen}
         activeMascot={activeMascot}

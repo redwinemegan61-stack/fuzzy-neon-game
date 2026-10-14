@@ -27,7 +27,7 @@ function getGenAI(): GoogleGenAI | null {
   });
 }
 
-// 1. Text-to-Speech using gemini-3.1-flash-tts-preview
+// 1. Text-to-Speech using gemini-3.8-flash-lite-tts
 app.post("/api/mascot/tts", async (req, res) => {
   try {
     const { text, voice = "Kore" } = req.body;
@@ -54,7 +54,7 @@ app.post("/api/mascot/tts", async (req, res) => {
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.1-flash-tts-preview",
+      model: "gemini-3.8-flash-lite-tts",
       contents: [{ parts: [{ text: text }] }],
       config: {
         responseModalities: [Modality.AUDIO],

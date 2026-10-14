@@ -247,14 +247,14 @@ export const GameBoard: React.FC<GameBoardProps> = React.memo(({
                 <div className="flex items-center gap-2 mb-1">
                   <motion.div
                     animate={isRolling ? { rotate: [0, 180, 360], scale: [1, 1.2, 1] } : {}}
-                    transition={{ duration: 0.4, repeat: isRolling ? Infinity : 0 }}
+                    transition={{ type: 'tween', ease: 'easeInOut', duration: 0.4, repeat: isRolling ? Infinity : 0 }}
                     className="w-8 h-8 rounded-lg bg-gradient-to-br from-white to-slate-200 border-2 border-white/80 shadow-[0_0_12px_rgba(255,255,255,0.4)] flex items-center justify-center font-black text-slate-900 text-sm"
                   >
                     {diceVisuals[0]}
                   </motion.div>
                   <motion.div
                     animate={isRolling ? { rotate: [360, 180, 0], scale: [1, 1.2, 1] } : {}}
-                    transition={{ duration: 0.4, repeat: isRolling ? Infinity : 0 }}
+                    transition={{ type: 'tween', ease: 'easeInOut', duration: 0.4, repeat: isRolling ? Infinity : 0 }}
                     className="w-8 h-8 rounded-lg bg-gradient-to-br from-white to-slate-200 border-2 border-white/80 shadow-[0_0_12px_rgba(255,255,255,0.4)] flex items-center justify-center font-black text-slate-900 text-sm"
                   >
                     {diceVisuals[1]}

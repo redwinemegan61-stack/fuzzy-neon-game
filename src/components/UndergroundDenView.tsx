@@ -289,7 +289,7 @@ export const UndergroundDenView: React.FC<UndergroundDenProps> = ({
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-black text-white">Living Vertical Shadowbox</span>
               <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                2D Cutaway Burrow
+                Living Cavern Sanctuary
               </span>
             </div>
             <p className="text-[10px] text-slate-400">
@@ -457,7 +457,7 @@ export const UndergroundDenView: React.FC<UndergroundDenProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. THE LIVING SHADOWBOX: VERTICAL CROSS-SECTION CUTAWAY CONTAINER        */}
+      {/* 2. THE LIVING SHADOWBOX: VERTICAL CAVERN STRATA CONTAINER                */}
       {/* ========================================================================= */}
       <div className="w-full rounded-3xl border-4 border-slate-800/90 shadow-2xl overflow-hidden relative bg-[#070814]">
         {/* Soft Shadow Inside Frame */}
@@ -567,8 +567,8 @@ export const UndergroundDenView: React.FC<UndergroundDenProps> = ({
                     }
                     transition={
                       isScruffHeld
-                        ? { duration: 0.35, ease: 'easeOut' }
-                        : { duration: 3.4, repeat: Infinity, ease: 'easeInOut' }
+                        ? { type: 'tween', duration: 0.35, ease: 'easeOut' }
+                        : { type: 'tween', duration: 3.4, repeat: Infinity, ease: 'easeInOut' }
                     }
                   >
                     <MascotAvatar
@@ -608,7 +608,7 @@ export const UndergroundDenView: React.FC<UndergroundDenProps> = ({
         >
           {/* Velvety Plush Earthen Edges with Exposed Roots & Glowing Neon Gems */}
           <div className="absolute inset-0 pointer-events-none opacity-50">
-            {/* Cutaway Stratum Rock Bandings */}
+            {/* Cavern Stratum Rock Bandings */}
             <div className="absolute top-2 inset-x-0 h-1 bg-[#432357]/40 blur-xs" />
             <div className="absolute top-8 inset-x-0 h-1.5 bg-[#5b2b78]/30 blur-xs" />
             <div className="absolute bottom-4 inset-x-0 h-2 bg-[#2d183d]/50 blur-xs" />
@@ -663,7 +663,7 @@ export const UndergroundDenView: React.FC<UndergroundDenProps> = ({
                 <motion.div
                   initial={{ x: zippingDirection === 'down' ? -80 : 80, scale: 0.7 }}
                   animate={{ x: zippingDirection === 'down' ? 80 : -80, scale: [0.7, 1.1, 0.7] }}
-                  transition={{ duration: 0.65, ease: 'easeInOut' }}
+                  transition={{ type: 'tween', duration: 0.65, ease: 'easeInOut' }}
                   className="flex items-center gap-1 text-cyan-200 font-black text-xs"
                 >
                   <span className="text-xl animate-spin">🌀</span>
@@ -969,10 +969,10 @@ export const UndergroundDenView: React.FC<UndergroundDenProps> = ({
                                     }
                                     transition={
                                       mascotLocation.action === 'bouncing'
-                                        ? { duration: 0.55, repeat: Infinity }
+                                        ? { type: 'tween', duration: 0.55, repeat: Infinity, ease: 'easeInOut' }
                                         : mascotLocation.action === 'lofi_dance'
-                                        ? { duration: 0.65, repeat: Infinity }
-                                        : { duration: 2.8, repeat: Infinity, ease: 'easeInOut' }
+                                        ? { type: 'tween', duration: 0.65, repeat: Infinity, ease: 'easeInOut' }
+                                        : { type: 'tween', duration: 2.8, repeat: Infinity, ease: 'easeInOut' }
                                     }
                                   >
                                     <MascotAvatar
@@ -1092,7 +1092,7 @@ export const UndergroundDenView: React.FC<UndergroundDenProps> = ({
                 {/* 4. FOREGROUND FRAME: Plush Earthen Edges, Roots, Spores, Gems   */}
                 {/* =============================================================== */}
                 <div className="absolute inset-0 pointer-events-none z-30">
-                  {/* Curved cutaway earth framing arch */}
+                  {/* Curved plush earth framing arch */}
                   <svg viewBox="0 0 800 260" className="w-full h-full" preserveAspectRatio="none">
                     {/* Left plush earth curve */}
                     <path

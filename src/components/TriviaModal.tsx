@@ -108,7 +108,7 @@ export const TriviaModal: React.FC<TriviaModalProps> = ({
                 Google Search Grounding
               </span>
               <span className="text-[9px] bg-indigo-900/80 text-cyan-300 font-bold px-1.5 py-0.5 rounded-full">
-                Gemini 3.5 Flash
+                Gemini 3.8 Flash
               </span>
             </div>
             <h3 className="text-base font-black text-white">Daily Cyber Trivia</h3>

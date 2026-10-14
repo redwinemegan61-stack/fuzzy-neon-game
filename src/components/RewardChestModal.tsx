@@ -117,7 +117,7 @@ export const RewardChestModal: React.FC<RewardChestModalProps> = ({
                   }
                 : { scale: 1.1 }
             }
-            transition={{ duration: 1.2, repeat: !opened ? Infinity : 0, ease: 'easeInOut' }}
+            transition={{ type: 'tween', duration: 1.2, repeat: !opened ? Infinity : 0, ease: 'easeInOut' }}
             onClick={handleOpenChest}
             className={`w-32 h-32 rounded-3xl border-4 flex flex-col items-center justify-center cursor-pointer transition-all shadow-xl ${
               opened

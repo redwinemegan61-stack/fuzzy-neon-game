@@ -168,6 +168,7 @@ export const MascotAvatar: React.FC<MascotAvatarProps> = React.memo(({
         duration: isDancing ? 0.7 : isResting ? 3.5 : 3.8,
         repeat: Infinity,
         ease: 'easeInOut',
+        type: 'tween',
       }}
       whileHover={interactive && !isResting ? { scale: 1.08, rotate: 2 } : undefined}
       whileTap={interactive && !isResting ? { scale: 0.94 } : undefined}
@@ -301,7 +302,7 @@ function PipGoldenLeafPuff({
       <motion.g
         id="pip-ears"
         animate={isTwitching ? { rotate: [-5, 7, -3, 0] } : { rotate: 0 }}
-        transition={{ duration: 0.35, ease: 'easeInOut' }}
+        transition={{ type: 'tween', duration: 0.35, ease: 'easeInOut' }}
         style={{ transformOrigin: '80px 48px' }}
       >
         {/* Left ear */}
@@ -456,7 +457,7 @@ function BobaButterflyFox({
       <motion.g
         id="fox-ears"
         animate={isTwitching ? { rotate: [-6, 8, -4, 0] } : { rotate: 0 }}
-        transition={{ duration: 0.35, ease: 'easeInOut' }}
+        transition={{ type: 'tween', duration: 0.35, ease: 'easeInOut' }}
         style={{ transformOrigin: '80px 60px' }}
       >
         {/* Left Ear */}
@@ -484,7 +485,7 @@ function BobaButterflyFox({
           id="pink-ear-butterfly"
           transform="translate(116, 26) rotate(18)"
           animate={isTwitching ? { scaleX: [1, 0.3, 1.1, 1], rotate: [18, 30, 10, 18] } : { rotate: 18 }}
-          transition={{ duration: 0.3 }}
+          transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
         >
           <path d="M 0 0 C 6 -12, 18 -10, 16 0 C 18 10, 6 12, 0 0 Z" fill="url(#pinkWingGrad)" stroke="#9d174d" strokeWidth="0.8" />
           <path d="M 0 0 C -4 -10, -12 -8, -10 0 C -12 8, -4 10, 0 0 Z" fill="url(#pinkWingGrad)" stroke="#9d174d" strokeWidth="0.8" />
@@ -550,7 +551,7 @@ function BobaButterflyFox({
         id="blue-cheek-butterfly"
         transform="translate(42, 92) rotate(-14)"
         animate={isTwitching ? { scaleX: [1, 0.4, 1.15, 1] } : { scaleX: 1 }}
-        transition={{ duration: 0.32 }}
+        transition={{ type: 'tween', ease: 'easeInOut', duration: 0.32 }}
       >
         <path d="M 0 0 C -12 -16, -26 -10, -22 2 C -18 10, -6 6, 0 0 Z" fill="url(#blueWingGrad)" stroke="#0369a1" strokeWidth="0.8" />
         <path d="M 0 0 C -16 6, -18 18, -6 16 C -2 14, 0 8, 0 0 Z" fill="url(#blueWingGrad)" stroke="#0369a1" strokeWidth="0.8" />
@@ -604,7 +605,7 @@ function ZiggyDragonflyPanda({
       <motion.g
         id="panda-tail"
         animate={isTwitching ? { rotate: [0, 8, -6, 0] } : { rotate: 0 }}
-        transition={{ duration: 0.4 }}
+        transition={{ type: 'tween', ease: 'easeInOut', duration: 0.4 }}
         style={{ transformOrigin: '115px 125px' }}
       >
         <path
@@ -623,7 +624,7 @@ function ZiggyDragonflyPanda({
       <motion.g
         id="panda-ears"
         animate={isTwitching ? { rotate: [-5, 7, -3, 0] } : { rotate: 0 }}
-        transition={{ duration: 0.35 }}
+        transition={{ type: 'tween', ease: 'easeInOut', duration: 0.35 }}
         style={{ transformOrigin: '80px 50px' }}
       >
         {/* Left Ear */}
@@ -641,7 +642,7 @@ function ZiggyDragonflyPanda({
           id="dragonfly-left"
           transform="translate(42, 38) rotate(-18)"
           animate={isTwitching ? { rotate: [-18, -30, -8, -18], scale: [1, 1.15, 0.95, 1] } : { rotate: -18 }}
-          transition={{ duration: 0.35 }}
+          transition={{ type: 'tween', ease: 'easeInOut', duration: 0.35 }}
         >
           <ellipse cx="-12" cy="-6" rx="14" ry="4" fill="url(#dragonflyWingGrad)" stroke="#06b6d4" strokeWidth="0.6" />
           <ellipse cx="-10" cy="3" rx="12" ry="3.5" fill="url(#dragonflyWingGrad)" stroke="#06b6d4" strokeWidth="0.6" />
@@ -654,7 +655,7 @@ function ZiggyDragonflyPanda({
           id="dragonfly-right"
           transform="translate(118, 38) rotate(18)"
           animate={isTwitching ? { rotate: [18, 30, 8, 18], scale: [1, 1.15, 0.95, 1] } : { rotate: 18 }}
-          transition={{ duration: 0.35 }}
+          transition={{ type: 'tween', ease: 'easeInOut', duration: 0.35 }}
         >
           <ellipse cx="12" cy="-6" rx="14" ry="4" fill="url(#dragonflyWingGrad)" stroke="#06b6d4" strokeWidth="0.6" />
           <ellipse cx="10" cy="3" rx="12" ry="3.5" fill="url(#dragonflyWingGrad)" stroke="#06b6d4" strokeWidth="0.6" />
@@ -770,7 +771,7 @@ function KoraCoralSprite({
       <motion.g
         id="kora-coral-antlers"
         animate={isTwitching ? { rotate: [-4, 5, -2, 0] } : { rotate: 0 }}
-        transition={{ duration: 0.35 }}
+        transition={{ type: 'tween', ease: 'easeInOut', duration: 0.35 }}
         style={{ transformOrigin: '80px 56px' }}
       >
         {/* Left Coral Horn */}
@@ -908,7 +909,7 @@ function LuluPinkDewPuff({
         fill="#fbcfe8"
         opacity="0.95"
         animate={isTwitching ? { scale: [1, 1.05, 0.98, 1] } : { scale: 1 }}
-        transition={{ duration: 0.35 }}
+        transition={{ type: 'tween', ease: 'easeInOut', duration: 0.35 }}
         style={{ transformOrigin: '80px 78px' }}
       >
         <path d="M 40 38 Q 28 26 34 44 Q 22 38 28 54 Q 16 52 24 68 Q 14 72 22 86 Q 14 92 26 102 Q 20 110 34 118 Q 30 126 46 128 Z" />
@@ -1005,7 +1006,7 @@ function GenericFuzzyMascot({
       {/* Fuzzy Ears with Micro-Twitch */}
       <motion.g
         animate={isTwitching ? { rotate: [-6, 7, -3, 0] } : { rotate: 0 }}
-        transition={{ duration: 0.35 }}
+        transition={{ type: 'tween', ease: 'easeInOut', duration: 0.35 }}
         style={{ transformOrigin: '80px 46px' }}
       >
         <ellipse cx="50" cy="46" rx="14" ry="16" fill={c1} stroke="#ffffff" strokeWidth="1" />

@@ -571,7 +571,7 @@ export const SoundEngine = {
   },
 };
 
-// Play Gemini 3.1 Flash TTS Audio - DEPRECATED: Mascots do NOT speak words, they only squeak!
+// Play Gemini 3.8 Flash Lite TTS Audio - DEPRECATED: Mascots do NOT speak words, they only squeak!
 // Kept for backward compatibility but routes to pure mascot squeak
 export async function playGeminiTTS(
   _base64Pcm?: string,

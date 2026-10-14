@@ -115,7 +115,7 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
             <motion.button
               whileTap={{ scale: 0.94 }}
               animate={{ scale: [1, 1.04, 1] }}
-              transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+              transition={{ type: 'tween', repeat: Infinity, duration: 2, ease: 'easeInOut' }}
               onClick={handleClaimAll}
               className="py-1.5 px-3 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_15px_rgba(251,191,36,0.6)]"
             >
@@ -314,7 +314,7 @@ export const AchievementsSection: React.FC<AchievementsSectionProps> = ({
                         <motion.button
                           whileTap={{ scale: 0.94 }}
                           animate={{ scale: [1, 1.05, 1] }}
-                          transition={{ repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
+                          transition={{ type: 'tween', repeat: Infinity, duration: 1.6, ease: 'easeInOut' }}
                           onClick={(e) => handleClaim(achievement.id, e)}
                           className="py-1 px-3 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-slate-950 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-[0_0_12px_rgba(251,191,36,0.5)] transition-all"
                         >

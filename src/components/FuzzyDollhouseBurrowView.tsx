@@ -467,7 +467,7 @@ export const FuzzyDollhouseBurrowView: React.FC<FuzzyDollhouseBurrowViewProps> =
           </div>
 
           <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-black uppercase tracking-wider">
-            Dollhouse Cutaway
+            Dollhouse Sanctuary
           </span>
         </div>
 
@@ -563,7 +563,7 @@ export const FuzzyDollhouseBurrowView: React.FC<FuzzyDollhouseBurrowViewProps> =
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. THE DOLLHOUSE 2-LEVEL CUTAWAY SCENE (Exact Match to Illustration)       */}
+      {/* 2. THE DOLLHOUSE 2-LEVEL HAVEN SCENE (Exact Match to Illustration)         */}
       {/* ========================================================================= */}
       <div className="relative w-full max-w-4xl rounded-3xl overflow-hidden border-2 border-amber-950/60 shadow-[0_12px_40px_rgba(0,0,0,0.8)] bg-gradient-to-b from-[#172554]/40 via-[#271b38] to-[#120a1d]">
         {/* Floating Heart Reaction Particle */}
@@ -1119,7 +1119,7 @@ export const FuzzyDollhouseBurrowView: React.FC<FuzzyDollhouseBurrowViewProps> =
             {/* LEVEL 2: THE UNDERGROUND DEN (CAVERN INTERIOR)                */}
             {/* ------------------------------------------------------------- */}
             <g id="underground-cavern">
-              {/* Cavern Hollow Interior Cutaway Silhouette */}
+              {/* Cavern Hollow Interior Silhouette */}
               <path
                 d="M 80 500 C 70 480, 730 480, 720 500 C 770 560, 780 770, 730 840 C 650 885, 150 885, 70 840 C 20 770, 30 560, 80 500 Z"
                 fill="#2d170f"
