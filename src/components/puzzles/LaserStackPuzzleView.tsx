@@ -33,6 +33,7 @@ export const LaserStackPuzzleView: React.FC<LaserStackPuzzleViewProps> = ({
   const [gameState, setGameState] = useState<'idle' | 'playing' | 'won' | 'lost'>('idle');
   const [perfectCount, setPerfectCount] = useState(0);
   const [feedbackText, setFeedbackText] = useState<string | null>(null);
+  const [slicedFragment, setSlicedFragment] = useState<{ col: number; width: number; floor: number } | null>(null);
 
   const loopTimerRef = useRef<any>(null);
 
@@ -125,9 +126,14 @@ export const LaserStackPuzzleView: React.FC<LaserStackPuzzleViewProps> = ({
       SoundEngine.playComboChime(perfectCount + 1);
       setPerfectCount((p) => p + 1);
       setFeedbackText('★ PERFECT LASER ALIGNMENT! ★');
+      setSlicedFragment(null);
     } else {
       SoundEngine.playLaserHit(1.2);
       setFeedbackText(`LASER SLICED (-${blockWidth - overlapWidth})`);
+      const slicedCol = currStart < prevStart ? currStart : prevEnd;
+      const slicedW = blockWidth - overlapWidth;
+      setSlicedFragment({ col: slicedCol, width: slicedW, floor: currentFloor });
+      setTimeout(() => setSlicedFragment(null), 450);
     }
 
     const newPlaced: PlacedFloor = {
@@ -233,42 +239,61 @@ export const LaserStackPuzzleView: React.FC<LaserStackPuzzleViewProps> = ({
           const placed = placedFloors[rIdx];
 
           return (
-            <div key={rIdx} className="grid grid-cols-7 gap-1 h-full items-center">
+            <div key={rIdx} className="grid grid-cols-7 gap-1 h-full items-center relative">
+              {/* Grid Slots & Placed Floors */}
               {Array.from({ length: COLS }).map((_, cIdx) => {
-                let isLit = false;
-                let isMoving = false;
-
-                if (isCurrentMovingRow) {
-                  if (cIdx >= currentCol && cIdx < currentCol + blockWidth) {
-                    isLit = true;
-                    isMoving = true;
-                  }
-                } else if (placed) {
-                  if (cIdx >= placed.startCol && cIdx < placed.startCol + placed.width) {
-                    isLit = true;
-                  }
-                }
+                const isPlaced = placed && cIdx >= placed.startCol && cIdx < placed.startCol + placed.width;
 
                 return (
                   <div
                     key={cIdx}
                     className={`h-4.5 rounded-md transition-all relative overflow-hidden ${
-                      isMoving
-                        ? 'bg-gradient-to-b from-fuchsia-400 via-rose-500 to-rose-600 shadow-[0_0_14px_rgba(255,0,127,0.9)] border-2 border-white'
-                        : isLit
+                      isPlaced
                         ? rIdx >= STACKER_CONFIG.majorPrizeFloor
-                          ? 'bg-gradient-to-b from-yellow-200 via-amber-400 to-yellow-600 shadow-[0_0_12px_rgba(251,191,36,0.8)] border border-yellow-100'
-                          : 'bg-gradient-to-b from-cyan-200 via-cyan-400 to-blue-600 shadow-[0_0_10px_rgba(0,240,255,0.7)] border border-cyan-200'
+                          ? 'bg-gradient-to-b from-yellow-200 via-amber-400 to-yellow-600 shadow-[0_0_12px_rgba(251,191,36,0.85)] border border-yellow-100'
+                          : 'bg-gradient-to-b from-cyan-200 via-cyan-400 to-blue-600 shadow-[0_0_10px_rgba(0,240,255,0.75)] border border-cyan-200'
                         : 'bg-slate-900/60 border border-slate-800/40'
                     }`}
                   >
                     {/* Glass Bevel Top Specular Glint */}
-                    {(isMoving || isLit) && (
+                    {isPlaced && (
                       <div className="absolute top-0 inset-x-0.5 h-[1.5px] rounded-full bg-white/80 pointer-events-none" />
                     )}
                   </div>
                 );
               })}
+
+              {/* Smooth 60fps Gliding Laser Block Overlay */}
+              {isCurrentMovingRow && (
+                <div
+                  className="absolute inset-y-0.5 rounded-md bg-gradient-to-r from-fuchsia-400 via-rose-500 to-pink-500 shadow-[0_0_16px_rgba(255,0,127,0.95)] border-2 border-white z-20 pointer-events-none flex items-center justify-center overflow-hidden"
+                  style={{
+                    left: `${(currentCol / COLS) * 100}%`,
+                    width: `${(blockWidth / COLS) * 100}%`,
+                    transition: `left ${getSpeedMs(currentFloor)}ms linear`,
+                  }}
+                >
+                  <div className="absolute top-0 inset-x-0.5 h-[2px] rounded-full bg-white/90 pointer-events-none" />
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.4)_0%,transparent_70%)]" />
+                  <span className="text-[8px] font-black text-white/90 drop-shadow">⚡</span>
+                </div>
+              )}
+
+              {/* Sliced Overhang Falling Fragment */}
+              {slicedFragment && slicedFragment.floor === rIdx && (
+                <motion.div
+                  initial={{ y: 0, opacity: 1, scale: 1 }}
+                  animate={{ y: 28, opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.45, ease: 'easeIn' }}
+                  className="absolute inset-y-0.5 rounded-md bg-gradient-to-b from-red-400 via-orange-500 to-red-600 shadow-[0_0_14px_rgba(239,68,68,0.9)] border border-yellow-200 z-10 pointer-events-none flex items-center justify-center overflow-hidden"
+                  style={{
+                    left: `${(slicedFragment.col / COLS) * 100}%`,
+                    width: `${(slicedFragment.width / COLS) * 100}%`,
+                  }}
+                >
+                  <span className="text-[7px] text-white">💥</span>
+                </motion.div>
+              )}
             </div>
           );
         })}

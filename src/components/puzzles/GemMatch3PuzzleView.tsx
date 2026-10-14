@@ -128,6 +128,7 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
   const [board, setBoard] = useState<GemCell[][]>(generateCleanBoard);
   const [selectedPos, setSelectedPos] = useState<{ r: number; c: number } | null>(null);
   const [swappingPair, setSwappingPair] = useState<{ r1: number; c1: number; r2: number; c2: number } | null>(null);
+  const [dragTargetPos, setDragTargetPos] = useState<{ r: number; c: number } | null>(null);
   const [explodingCoords, setExplodingCoords] = useState<Set<string>>(new Set());
   const [floatingScores, setFloatingScores] = useState<FloatingScore[]>([]);
   const [hintPair, setHintPair] = useState<[{ r: number; c: number }, { r: number; c: number }] | null>(null);
@@ -413,12 +414,17 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
     if (isProcessing || hasWon || isGameOver) return;
     setIsProcessing(true);
     setSelectedPos(null);
+    setDragTargetPos(null);
     setHintPair(null);
     setSwappingPair({ r1, c1, r2, c2 });
+    SoundEngine.playBoardHop();
 
     const newBoard = board.map((row) => [...row]);
     const gemA = newBoard[r1][c1];
     const gemB = newBoard[r2][c2];
+
+    // Smooth visual slide animation duration
+    await new Promise((res) => setTimeout(res, 160));
 
     // Rainbow star special match logic
     if (gemA?.special === 'rainbow' || gemB?.special === 'rainbow') {
@@ -446,17 +452,13 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
     newBoard[r1][c1] = gemB;
     newBoard[r2][c2] = gemA;
     setBoard(newBoard);
-
-    // Brief wait for swap visually
-    await new Promise((res) => setTimeout(res, 140));
+    setSwappingPair(null);
 
     // Check if swap produces a match
     const { matches } = findMatches(newBoard);
 
     if (matches.size > 0) {
       // Valid move!
-      SoundEngine.playBoardHop();
-      setSwappingPair(null);
       setMovesLeft((m) => {
         const nextMoves = m - 1;
         if (nextMoves <= 0 && score < TARGET_SCORE) {
@@ -468,7 +470,8 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
     } else {
       // Invalid move: smoothly animate rebound back
       SoundEngine.playErrorBuzz();
-      await new Promise((res) => setTimeout(res, 180));
+      setSwappingPair({ r1: r2, c1: c2, r2: r1, c2: c1 });
+      await new Promise((res) => setTimeout(res, 160));
       // Swap back
       const revertedBoard = newBoard.map((row) => [...row]);
       revertedBoard[r1][c1] = gemA;
@@ -484,6 +487,32 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
   const handlePointerDown = (r: number, c: number, e: React.PointerEvent) => {
     if (isProcessing || hasWon || isGameOver) return;
     pointerStartRef.current = { r, c, x: e.clientX, y: e.clientY };
+    setDragTargetPos(null);
+  };
+
+  // Handle pointer move for real-time drag target feedback
+  const handlePointerMove = (r: number, c: number, e: React.PointerEvent) => {
+    if (isProcessing || hasWon || isGameOver || !pointerStartRef.current) return;
+    const start = pointerStartRef.current;
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist > 12) {
+      let targetR = start.r;
+      let targetC = start.c;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        targetC += dx > 0 ? 1 : -1;
+      } else {
+        targetR += dy > 0 ? 1 : -1;
+      }
+
+      if (targetR >= 0 && targetR < GRID_SIZE && targetC >= 0 && targetC < GRID_SIZE) {
+        setDragTargetPos({ r: targetR, c: targetC });
+      } else {
+        setDragTargetPos(null);
+      }
+    }
   };
 
   // Handle pointer up (for click resolution or swipe completion)
@@ -492,21 +521,20 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
 
     const start = pointerStartRef.current;
     pointerStartRef.current = null;
+    setDragTargetPos(null);
 
     const dx = e.clientX - start.x;
     const dy = e.clientY - start.y;
     const dist = Math.hypot(dx, dy);
 
     // Threshold for swipe gesture
-    if (dist > 18) {
+    if (dist > 16) {
       let targetR = start.r;
       let targetC = start.c;
 
       if (Math.abs(dx) > Math.abs(dy)) {
-        // Horizontal swipe
         targetC += dx > 0 ? 1 : -1;
       } else {
-        // Vertical swipe
         targetR += dy > 0 ? 1 : -1;
       }
 
@@ -669,6 +697,7 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
               }
 
               const isSelected = selectedPos?.r === rIdx && selectedPos?.c === cIdx;
+              const isDragTarget = dragTargetPos?.r === rIdx && dragTargetPos?.c === cIdx;
               const isExploding = explodingCoords.has(`${rIdx},${cIdx}`);
               const isHinted =
                 hintPair &&
@@ -676,38 +705,68 @@ export const GemMatch3PuzzleView: React.FC<GemMatch3PuzzleViewProps> = ({
                   (hintPair[1].r === rIdx && hintPair[1].c === cIdx));
               const config = GEM_CONFIGS[gem.type] || GEM_CONFIGS.ruby;
 
+              // Smooth visual slide calculation when swapping
+              const isSwappingA = swappingPair && swappingPair.r1 === rIdx && swappingPair.c1 === cIdx;
+              const isSwappingB = swappingPair && swappingPair.r2 === rIdx && swappingPair.c2 === cIdx;
+              let swapTranslateX = 0;
+              let swapTranslateY = 0;
+              if (isSwappingA && swappingPair) {
+                swapTranslateX = (swappingPair.c2 - swappingPair.c1) * 100;
+                swapTranslateY = (swappingPair.r2 - swappingPair.r1) * 100;
+              } else if (isSwappingB && swappingPair) {
+                swapTranslateX = (swappingPair.c1 - swappingPair.c2) * 100;
+                swapTranslateY = (swappingPair.r1 - swappingPair.r2) * 100;
+              }
+
               return (
                 <motion.div
                   key={gem.id}
-                  layoutId={`cell-${gem.id}`}
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{
-                    scale: isExploding ? 1.25 : isSelected ? 1.08 : 1,
+                    scale: isExploding ? 1.3 : isSelected ? 1.1 : isDragTarget ? 1.05 : 1,
                     opacity: isExploding ? 0 : 1,
-                    rotate: isHinted && !isSelected ? [-3, 3, -3, 0] : 0,
                   }}
                   transition={{
-                    scale: { duration: isExploding ? 0.2 : 0.15 },
+                    scale: { duration: isExploding ? 0.22 : 0.14 },
                     opacity: { duration: 0.18 },
-                    rotate: { repeat: isHinted ? Infinity : 0, duration: 1.2 },
                   }}
                   onPointerDown={(e) => handlePointerDown(rIdx, cIdx, e)}
+                  onPointerMove={(e) => handlePointerMove(rIdx, cIdx, e)}
                   onPointerUp={(e) => handlePointerUp(rIdx, cIdx, e)}
-                  className={`flex-1 rounded-xl p-1 flex items-center justify-center relative cursor-pointer transition-all border shadow-sm ${
+                  className={`flex-1 rounded-xl p-1 flex items-center justify-center relative cursor-pointer border shadow-sm select-none ${
                     isSelected
-                      ? 'ring-2 ring-white scale-108 z-20 shadow-[0_0_20px_rgba(255,255,255,0.9)] animate-pulse'
+                      ? 'ring-2 ring-white scale-110 z-20 shadow-[0_0_20px_rgba(255,255,255,0.95)] animate-pulse'
+                      : isDragTarget
+                      ? 'ring-2 ring-cyan-400 scale-105 z-20 shadow-[0_0_16px_rgba(6,182,212,0.9)]'
                       : isHinted
-                      ? 'ring-1 ring-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.6)]'
+                      ? 'ring-2 ring-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.7)]'
                       : 'hover:scale-104 active:scale-95'
                   } bg-gradient-to-br ${config.bgGradient} ${config.border}`}
                   style={{
+                    transform: isSwappingA || isSwappingB ? `translate(${swapTranslateX}%, ${swapTranslateY}%)` : 'none',
+                    transition: isSwappingA || isSwappingB ? 'transform 160ms cubic-bezier(0.2, 0.9, 0.3, 1)' : 'transform 120ms ease-out',
+                    zIndex: isSwappingA || isSwappingB ? 30 : isSelected || isDragTarget ? 20 : 1,
                     boxShadow: isSelected
-                      ? `0 0 20px ${config.glow}, inset 0 0 8px rgba(255,255,255,0.8)`
+                      ? `0 0 20px ${config.glow}, inset 0 0 8px rgba(255,255,255,0.85)`
+                      : isDragTarget
+                      ? `0 0 16px rgba(6,182,212,0.8), inset 0 0 6px rgba(255,255,255,0.6)`
                       : `0 2px 8px ${config.glow}, inset 0 1px 1px rgba(255,255,255,0.2)`,
                   }}
                 >
                   {/* Glass Top Bevel Reflection */}
                   <div className="absolute top-0.5 inset-x-1.5 h-1.5 rounded-full bg-white/25 blur-[0.4px] pointer-events-none" />
+
+                  {/* Explosive Match Burst Ring */}
+                  {isExploding && (
+                    <div className="absolute inset-0 rounded-xl bg-white/70 animate-ping pointer-events-none" />
+                  )}
+
+                  {/* Directional Drag Arrow for Target Cell */}
+                  {isDragTarget && (
+                    <div className="absolute inset-0 rounded-xl border-2 border-cyan-300 animate-pulse pointer-events-none flex items-center justify-center">
+                      <span className="text-[10px] text-cyan-200 font-black drop-shadow">⚡</span>
+                    </div>
+                  )}
 
                   {/* Symmetrical Vector Gem Emblem */}
                   <GemEmblem
