@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Sparkles, Volume2, ShieldCheck, X, Check, Plus, Zap, ArrowUpCircle, TrendingUp, Coins, Award, Music, Crown } from 'lucide-react';
+import { Sparkles, Volume2, ShieldCheck, X, Check, Plus, Zap, ArrowUpCircle, TrendingUp, Coins, Award, Music, Crown, Home } from 'lucide-react';
 import { Mascot } from '../types';
 import { MascotAvatar } from './MascotAvatar';
 import { SoundEngine } from '../utils/sound';
@@ -16,6 +16,7 @@ interface MascotDetailModalProps {
   onUpgradeMascot: (mascotId: string) => void;
   onOpenScanner: () => void;
   onClose: () => void;
+  onOpenBurrows?: () => void;
 }
 
 export const MascotDetailModal: React.FC<MascotDetailModalProps> = ({
@@ -27,6 +28,7 @@ export const MascotDetailModal: React.FC<MascotDetailModalProps> = ({
   onUpgradeMascot,
   onOpenScanner,
   onClose,
+  onOpenBurrows,
 }) => {
   const [selectedMascotId, setSelectedMascotId] = useState<string>(activeMascotId || allMascots[0]?.id);
   const [isSqueaking, setIsSqueaking] = useState(false);
@@ -293,6 +295,20 @@ export const MascotDetailModal: React.FC<MascotDetailModalProps> = ({
                         </div>
                       </div>
                     </div>
+
+                    {onOpenBurrows && (
+                      <button
+                        onClick={() => {
+                          onClose();
+                          onOpenBurrows();
+                          SoundEngine.playBoardHop();
+                        }}
+                        className="mt-2.5 w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 text-slate-950 text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-2 hover:brightness-110 active:scale-98 transition-all shadow-[0_0_15px_rgba(251,191,36,0.6)] cursor-pointer"
+                      >
+                        <Home className="w-3.5 h-3.5" />
+                        <span>Visit {selectedMascot.name}&apos;s Glowing 3D Burrow ➔</span>
+                      </button>
+                    )}
                   </div>
 
                   <div className="text-[10px] font-black text-emerald-400 mt-2 flex items-center gap-1">

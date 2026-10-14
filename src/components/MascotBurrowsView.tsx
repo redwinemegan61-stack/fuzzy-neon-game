@@ -30,13 +30,14 @@ import {
   Crown,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { Mascot, MascotBurrow, BurrowFeature, BurrowStyleOption } from '../types';
+import { Mascot, MascotBurrow, BurrowFeature, BurrowStyleOption, Town } from '../types';
 import { MascotAvatar } from './MascotAvatar';
 import { SoundEngine } from '../utils/sound';
 import { SurfaceSnuggleNookDiorama } from './SurfaceSnuggleNookDiorama';
 import { UndergroundDenView } from './UndergroundDenView';
 import { FuzzyDollhouseBurrowView } from './FuzzyDollhouseBurrowView';
 import { ThreeBurrowDiorama } from './ThreeBurrowDiorama';
+import { ThreeTownBurrowsMap } from './ThreeTownBurrowsMap';
 import { MAX_MASCOT_LEVEL } from '../utils/mascotLeveling';
 import {
   MASCOT_NOOK_SIGNATURES,
@@ -48,6 +49,7 @@ interface MascotBurrowsViewProps {
   activeMascot: Mascot;
   playerCoins: number;
   burrows: Record<string, MascotBurrow>;
+  town?: Town;
   undergroundDen?: {
     unlockedFurnitureIds: string[];
     roomPlacements: Record<string, string>;
@@ -63,6 +65,7 @@ interface MascotBurrowsViewProps {
   onExcavateChamber?: (chamberId: string, cost: number, reward: number) => void;
   onCollectDailyStash?: (amount: number) => void;
   onOpenTradingPost?: () => void;
+  onUpgradeLandmark?: (landmarkId: string, cost: number) => void;
   duplicateTradesCount?: number;
 }
 
@@ -71,6 +74,7 @@ export const MascotBurrowsView: React.FC<MascotBurrowsViewProps> = ({
   activeMascot,
   playerCoins,
   burrows,
+  town,
   undergroundDen,
   onSelectActiveMascot,
   onUpgradeFeature,
@@ -81,9 +85,10 @@ export const MascotBurrowsView: React.FC<MascotBurrowsViewProps> = ({
   onExcavateChamber = () => {},
   onCollectDailyStash,
   onOpenTradingPost,
+  onUpgradeLandmark,
   duplicateTradesCount = 0,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'dollhouse' | 'shadowbox' | 'upgrades' | '3d_diorama'>('dollhouse');
+  const [activeSubTab, setActiveSubTab] = useState<'3d_town_map' | 'dollhouse' | 'shadowbox' | 'upgrades' | '3d_diorama'>('3d_town_map');
   const [selectedMascotId, setSelectedMascotId] = useState<string>(activeMascot.id);
   const [activeFeatureModal, setActiveFeatureModal] = useState<BurrowFeature | null>(null);
   const [mascotChatQuote, setMascotChatQuote] = useState<string | null>(null);
@@ -176,87 +181,131 @@ export const MascotBurrowsView: React.FC<MascotBurrowsViewProps> = ({
       transition={{ duration: 0.25 }}
       className="w-full flex flex-col gap-3 py-1"
     >
-      {/* 1. Sub-Navigation Switch: [Your Fuzzy Burrow (Dollhouse)] vs [Deep Cavern Shadowbox] vs [Upgrade Catalog] vs [Global Trading Post] */}
-      <div className="w-full grid grid-cols-2 sm:grid-cols-4 p-1.5 rounded-2xl bg-slate-950/90 border border-slate-800 shadow-xl gap-1.5">
-        <button
-          onClick={() => {
-            setActiveSubTab('dollhouse');
-            SoundEngine.playTileStep();
-          }}
-          className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-            activeSubTab === 'dollhouse'
-              ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 text-slate-950 shadow-md font-black scale-102'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
-          }`}
-        >
-          <Home className="w-4 h-4" />
-          <span>Fuzzy Burrow</span>
-        </button>
-
-        <button
-          onClick={() => {
-            setActiveSubTab('shadowbox');
-            SoundEngine.playTileStep();
-          }}
-          className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-            activeSubTab === 'shadowbox'
-              ? 'bg-gradient-to-r from-cyan-500 via-indigo-600 to-fuchsia-600 text-white shadow-md font-black scale-102'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
-          }`}
-        >
-          <Layers className="w-4 h-4" />
-          <span>Cavern Explorer</span>
-        </button>
-
-        <button
-          onClick={() => {
-            setActiveSubTab('upgrades');
-            SoundEngine.playTileStep();
-          }}
-          className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-            activeSubTab === 'upgrades'
-              ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white shadow-md font-black scale-102'
-              : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
-          }`}
-        >
-          <Sparkle className="w-4 h-4" />
-          <span>Style Catalog</span>
-        </button>
-
-        <button
-          onClick={() => {
-            setActiveSubTab('3d_diorama');
-            SoundEngine.playTileStep();
-          }}
-          className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-            activeSubTab === '3d_diorama'
-              ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 shadow-md font-black scale-102'
-              : 'text-cyan-300 hover:text-white hover:bg-cyan-950/40 border border-cyan-500/30'
-          }`}
-        >
-          <span className="text-sm">🎮</span>
-          <span>3D Diorama</span>
-        </button>
-
-        {onOpenTradingPost && (
+      {/* 1. Sub-Navigation Switch: [3D Town Mapped in Burrows] + [Fuzzy Burrow] + [Cavern Explorer] + [Style Catalog] + [3D Diorama] */}
+      <div className="w-full flex flex-col gap-1.5">
+        {/* Prominent 3D Town & Burrows Map Banner */}
+        {town && (
           <button
             onClick={() => {
+              setActiveSubTab('3d_town_map');
               SoundEngine.playTileStep();
-              onOpenTradingPost();
             }}
-            className="py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer bg-gradient-to-r from-amber-950/80 to-orange-950/80 border border-amber-500/50 hover:border-amber-400 text-amber-300 hover:text-white shadow-md relative"
-            title="Swap duplicate accessories & furniture with global players"
+            className={`w-full py-2.5 px-3.5 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center justify-between transition-all cursor-pointer relative shadow-lg ${
+              activeSubTab === '3d_town_map'
+                ? 'bg-gradient-to-r from-cyan-400 via-teal-500 to-indigo-600 text-slate-950 shadow-[0_0_20px_rgba(6,182,212,0.6)] border-2 border-white scale-[1.01]'
+                : 'bg-gradient-to-r from-cyan-950/80 via-slate-900 to-indigo-950/80 text-cyan-300 hover:text-white border border-cyan-500/40 hover:border-cyan-400'
+            }`}
           >
-            <span className="text-sm">🔄</span>
-            <span>Trading Post</span>
-            {duplicateTradesCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-lime-400 text-slate-950 text-[8px] font-black border border-white">
-                {duplicateTradesCount}
-              </span>
-            )}
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl animate-bounce">🗺️</span>
+              <div className="text-left">
+                <span className="block font-black text-xs">3D Mapped Town in Burrows</span>
+                <span className="text-[9.5px] opacity-80 normal-case font-medium block">
+                  Interactive Three.js 3D cutaway: surface town landmarks mapped above underground burrows
+                </span>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-black/25 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 border border-white/20">
+              <span>3D WebGL</span>
+              <ChevronRight className="w-3 h-3" />
+            </span>
           </button>
         )}
+
+        <div className="w-full grid grid-cols-2 sm:grid-cols-4 p-1.5 rounded-2xl bg-slate-950/90 border border-slate-800 shadow-xl gap-1.5">
+          <button
+            onClick={() => {
+              setActiveSubTab('dollhouse');
+              SoundEngine.playTileStep();
+            }}
+            className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              activeSubTab === 'dollhouse'
+                ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 text-slate-950 shadow-md font-black scale-102'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+            }`}
+          >
+            <Home className="w-4 h-4" />
+            <span>Fuzzy Burrow</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveSubTab('shadowbox');
+              SoundEngine.playTileStep();
+            }}
+            className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              activeSubTab === 'shadowbox'
+                ? 'bg-gradient-to-r from-cyan-500 via-indigo-600 to-fuchsia-600 text-white shadow-md font-black scale-102'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>Cavern Explorer</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveSubTab('upgrades');
+              SoundEngine.playTileStep();
+            }}
+            className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              activeSubTab === 'upgrades'
+                ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white shadow-md font-black scale-102'
+                : 'text-slate-400 hover:text-white hover:bg-slate-900/60'
+            }`}
+          >
+            <Sparkle className="w-4 h-4" />
+            <span>Style Catalog</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveSubTab('3d_diorama');
+              SoundEngine.playTileStep();
+            }}
+            className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              activeSubTab === '3d_diorama'
+                ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 shadow-md font-black scale-102'
+                : 'text-cyan-300 hover:text-white hover:bg-cyan-950/40 border border-cyan-500/30'
+            }`}
+          >
+            <span className="text-sm">🎮</span>
+            <span>3D Diorama</span>
+          </button>
+
+          {onOpenTradingPost && (
+            <button
+              onClick={() => {
+                SoundEngine.playTileStep();
+                onOpenTradingPost();
+              }}
+              className="py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer bg-gradient-to-r from-amber-950/80 to-orange-950/80 border border-amber-500/50 hover:border-amber-400 text-amber-300 hover:text-white shadow-md relative"
+              title="Swap duplicate accessories & furniture with global players"
+            >
+              <span className="text-sm">🔄</span>
+              <span>Trading Post</span>
+              {duplicateTradesCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-lime-400 text-slate-950 text-[8px] font-black border border-white">
+                  {duplicateTradesCount}
+                </span>
+              )}
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* RENDER 3D TOWN MAPPED IN BURROWS (Three.js WebGL) */}
+      {activeSubTab === '3d_town_map' && town && (
+        <ThreeTownBurrowsMap
+          town={town}
+          mascots={mascots}
+          activeMascot={activeMascot}
+          playerCoins={playerCoins}
+          burrows={burrows}
+          onUpgradeLandmark={onUpgradeLandmark}
+          onSelectActiveMascot={onSelectActiveMascot}
+        />
+      )}
 
       {/* RENDER DOLLHOUSE 2-LEVEL CUTAWAY VIEW (Exact Match to Illustration) */}
       {activeSubTab === 'dollhouse' && (

@@ -9,6 +9,8 @@ import { BOARD_TILES } from '../data/gameData';
 import { MascotAvatar } from './MascotAvatar';
 import { SoundEngine } from '../utils/sound';
 import { ThreeDiceStage } from './ThreeDiceStage';
+import { MAX_MASCOT_LEVEL } from '../utils/mascotLeveling';
+import { NeonTailParticles, TILE_GRID_POSITIONS } from './NeonTailParticles';
 
 interface GameBoardProps {
   currentTileIndex: number;
@@ -21,6 +23,7 @@ interface GameBoardProps {
   onToggleMultiplier: () => void;
   onOpenPuzzleArcade?: () => void;
   onTileClick?: (tile: BoardTile) => void;
+  diceValues?: [number, number];
 }
 
 // Icon mapper for tiles
@@ -61,17 +64,22 @@ export const GameBoard: React.FC<GameBoardProps> = React.memo(({
   onToggleMultiplier,
   onOpenPuzzleArcade,
   onTileClick,
+  diceValues: propDiceValues,
 }) => {
-  const [diceVisuals, setDiceVisuals] = useState<[number, number]>([3, 4]);
+  const [internalDiceVisuals, setInternalDiceVisuals] = useState<[number, number]>([3, 4]);
   const [is3DMode, setIs3DMode] = useState(true);
+
+  const diceVisuals: [number, number] = propDiceValues || internalDiceVisuals;
 
   const handleRoll = () => {
     if (isRolling || rolls < rollMultiplier) return;
     SoundEngine.playDiceRoll();
-    // Quick random dice values for animation
-    const d1 = Math.floor(Math.random() * 6) + 1;
-    const d2 = Math.floor(Math.random() * 6) + 1;
-    setDiceVisuals([d1, d2]);
+    // Quick fallback random if not controlled by parent
+    if (!propDiceValues) {
+      const d1 = Math.floor(Math.random() * 6) + 1;
+      const d2 = Math.floor(Math.random() * 6) + 1;
+      setInternalDiceVisuals([d1, d2]);
+    }
     onRollDice();
   };
 
@@ -131,6 +139,13 @@ export const GameBoard: React.FC<GameBoardProps> = React.memo(({
         <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-emerald-400/60 rounded-bl-2xl pointer-events-none" />
         <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-amber-400/60 rounded-br-2xl pointer-events-none" />
 
+        {/* Dynamic Animated 'Neon Tail' Particle Canvas */}
+        <NeonTailParticles
+          currentTileIndex={currentTileIndex}
+          isRolling={isRolling}
+          activeMascot={activeMascot}
+        />
+
         {/* Top Row (Tiles 0 to 4) */}
         <div className="grid grid-cols-5 gap-1.5 z-10">
           {topTiles.map((tile) => (
@@ -173,6 +188,11 @@ export const GameBoard: React.FC<GameBoardProps> = React.memo(({
 
             {/* Mascot on Center Pedestal */}
             <div className="relative mb-1">
+              {activeMascot.level >= MAX_MASCOT_LEVEL && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-sm drop-shadow-[0_0_8px_rgba(251,191,36,0.9)] animate-bounce z-20 pointer-events-none">
+                  👑
+                </span>
+              )}
               <MascotAvatar
                 mascot={activeMascot}
                 size="md"
@@ -185,9 +205,16 @@ export const GameBoard: React.FC<GameBoardProps> = React.memo(({
             {/* Active Mascot Name & Upgraded Level */}
             <div className="flex items-center gap-1.5 mb-1">
               <span className="text-xs font-black text-white">{activeMascot.name}</span>
-              <span className="text-[9px] bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black px-1.5 py-0.2 rounded-full shadow-sm">
-                Lv.{activeMascot.level}
-              </span>
+              {activeMascot.level >= MAX_MASCOT_LEVEL ? (
+                <span className="text-[9px] bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 font-black px-2 py-0.2 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.8)] border border-white/60 animate-pulse flex items-center gap-0.5">
+                  <span>👑</span>
+                  <span>MAX</span>
+                </span>
+              ) : (
+                <span className="text-[9px] bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-black px-1.5 py-0.2 rounded-full shadow-sm">
+                  Lv.{activeMascot.level}
+                </span>
+              )}
             </div>
 
             {/* Active Ability Pill with Upgraded Multiplier */}
@@ -357,6 +384,10 @@ const TileCard: React.FC<TileCardProps> = React.memo(({
   isRolling,
   onClick,
 }) => {
+  const tileInfo = TILE_GRID_POSITIONS[tile.index] || { dir: 'right' };
+  const primaryNeon = activeMascot.hairColors?.[0] || activeMascot.furColor || '#00f0ff';
+  const secondaryNeon = activeMascot.hairColors?.[1] || '#ff007f';
+
   return (
     <div
       onClick={onClick}
@@ -385,11 +416,61 @@ const TileCard: React.FC<TileCardProps> = React.memo(({
             transition={{ type: 'spring', stiffness: 450, damping: 25 }}
             className="absolute -top-6 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
           >
-            <div className="relative">
-              <div className="w-8 h-8 rounded-full border-2 border-white shadow-[0_0_12px_rgba(255,0,127,0.8)] overflow-hidden bg-slate-950">
+            <div className="relative flex items-center justify-center">
+              {/* Animated Neon Tail plume trailing opposite to movement vector */}
+              <div
+                className={`absolute pointer-events-none transition-all duration-200 z-0 ${
+                  tileInfo.dir === 'right'
+                    ? 'right-[80%] top-1/2 -translate-y-1/2 flex flex-row-reverse items-center'
+                    : tileInfo.dir === 'down'
+                    ? 'bottom-[80%] left-1/2 -translate-x-1/2 flex flex-col-reverse items-center'
+                    : tileInfo.dir === 'left'
+                    ? 'left-[80%] top-1/2 -translate-y-1/2 flex flex-row items-center'
+                    : 'top-[80%] left-1/2 -translate-x-1/2 flex flex-col items-center'
+                }`}
+              >
+                {/* Primary Neon Comet Flare */}
+                <div
+                  className={`rounded-full transition-all duration-150 ${
+                    isRolling ? 'w-8 h-3.5 opacity-95 scale-125' : 'w-5 h-2.5 opacity-80'
+                  }`}
+                  style={{
+                    background: `linear-gradient(${
+                      tileInfo.dir === 'right'
+                        ? 'to left'
+                        : tileInfo.dir === 'down'
+                        ? 'to top'
+                        : tileInfo.dir === 'left'
+                        ? 'to right'
+                        : 'to bottom'
+                    }, ${primaryNeon}, ${secondaryNeon} 55%, transparent)`,
+                    filter: `drop-shadow(0 0 10px ${primaryNeon})`,
+                  }}
+                />
+                {/* Trailing Neon Spark Embers */}
+                <div
+                  className={`rounded-full animate-ping ${
+                    isRolling ? 'w-2.5 h-2.5 opacity-90' : 'w-1.5 h-1.5 opacity-60'
+                  }`}
+                  style={{
+                    backgroundColor: secondaryNeon,
+                    boxShadow: `0 0 8px ${secondaryNeon}`,
+                  }}
+                />
+              </div>
+
+              {/* Luminous Mascot Ambient Glow */}
+              <div
+                className="absolute -inset-1 rounded-full blur-xs opacity-70 animate-pulse pointer-events-none -z-10"
+                style={{
+                  background: `radial-gradient(circle, ${primaryNeon} 0%, transparent 75%)`,
+                }}
+              />
+
+              <div className="w-8 h-8 rounded-full border-2 border-white shadow-[0_0_12px_rgba(255,0,127,0.8)] overflow-hidden bg-slate-950 relative z-10">
                 <MascotAvatar mascot={activeMascot} size="sm" showHairGlow={false} interactive={false} />
               </div>
-              <div className="absolute -bottom-1 -right-1 px-1 rounded-md bg-amber-400 text-slate-950 text-[7px] font-black border border-white">
+              <div className="absolute -bottom-1 -right-1 px-1 rounded-md bg-amber-400 text-slate-950 text-[7px] font-black border border-white z-20">
                 Lv.{activeMascot.level}
               </div>
             </div>
@@ -403,7 +484,7 @@ const TileCard: React.FC<TileCardProps> = React.memo(({
         {isCurrent && !isRolling && (
           <motion.div
             initial={{ opacity: 0, y: 6, scale: 0.5 }}
-            animate={{ opacity: 1, y: -26, scale: [0.5, 1.2, 1] }}
+            animate={{ opacity: 1, y: -26, scale: 1 }}
             exit={{ opacity: 0, y: -38, scale: 0.6 }}
             transition={{ type: 'spring', stiffness: 500, damping: 20 }}
             className="absolute -top-3 left-1/2 -translate-x-1/2 z-40 pointer-events-none whitespace-nowrap"

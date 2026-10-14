@@ -205,7 +205,7 @@ export const BoardTileEventPopup: React.FC<BoardTileEventPopupProps> = ({ event,
         key={`card-${event.id}`}
         initial={{ scale: 0.25, y: 55, rotate: -7, opacity: 0 }}
         animate={{
-          scale: isCollecting ? [1, 1.12, 0.85] : [0.25, 1.1, 0.96, 1],
+          scale: isCollecting ? 0.85 : 1,
           y: isCollecting ? -40 : 0,
           rotate: isCollecting ? 4 : 0,
           opacity: isCollecting ? 0 : 1,
@@ -285,8 +285,8 @@ export const BoardTileEventPopup: React.FC<BoardTileEventPopupProps> = ({ event,
           <motion.div
             initial={{ scale: 0.2, rotate: -25 }}
             animate={{
-              scale: [0.2, 1.35, 0.95, 1.05, 1],
-              rotate: [-25, 12, -6, 2, 0],
+              scale: 1,
+              rotate: 0,
             }}
             transition={{
               type: 'spring',
@@ -323,7 +323,7 @@ export const BoardTileEventPopup: React.FC<BoardTileEventPopupProps> = ({ event,
         {/* Big Juicy Punchy Reward Number */}
         <motion.div
           initial={{ scale: 0.4, opacity: 0 }}
-          animate={{ scale: [0.4, 1.25, 1], opacity: 1 }}
+          animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.14, type: 'spring', stiffness: 450, damping: 20 }}
           className="mb-1"
         >

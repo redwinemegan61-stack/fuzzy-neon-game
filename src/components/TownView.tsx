@@ -19,6 +19,7 @@ interface TownViewProps {
   onUpgradeLandmark: (landmarkId: string, cost: number) => void;
   onAdvanceNextTown?: () => void;
   onOpenAdCinema?: () => void;
+  onOpen3DTownMap?: () => void;
 }
 
 // Stage labels for construction
@@ -52,6 +53,7 @@ export const TownView: React.FC<TownViewProps> = React.memo(({
   onUpgradeLandmark,
   onAdvanceNextTown,
   onOpenAdCinema,
+  onOpen3DTownMap,
 }) => {
   // Selected landmark for inspector drawer
   const [selectedLandmarkId, setSelectedLandmarkId] = useState<string>(town.landmarks[0]?.id || '');
@@ -199,6 +201,27 @@ export const TownView: React.FC<TownViewProps> = React.memo(({
             transition={{ duration: 0.5 }}
           />
         </div>
+
+        {/* 3D Mapped Town in Burrows Shortcut Banner */}
+        {onOpen3DTownMap && (
+          <button
+            onClick={() => {
+              SoundEngine.playTileStep();
+              onOpen3DTownMap();
+            }}
+            className="w-full mt-2 py-2 px-3 rounded-xl bg-gradient-to-r from-cyan-950/80 via-slate-900 to-indigo-950/80 hover:border-cyan-400 border border-cyan-500/40 text-cyan-300 hover:text-white flex items-center justify-between transition-all cursor-pointer shadow-md"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-base animate-bounce">🗺️</span>
+              <span className="text-[11px] font-black uppercase tracking-wider">
+                Explore Town 3D Mapped in Burrows
+              </span>
+            </div>
+            <span className="text-[9px] font-black bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded-full border border-cyan-400/40 uppercase">
+              3D Cutaway ➔
+            </span>
+          </button>
+        )}
 
         {/* Town Completion & Travel Button */}
         {isTownComplete && (

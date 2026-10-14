@@ -251,6 +251,7 @@ export const ThreeBurrowDiorama: React.FC<ThreeBurrowDioramaProps> = ({ mascot, 
     domElement.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
 
     // 8. Animation Loop
     const animate = () => {
@@ -294,19 +295,26 @@ export const ThreeBurrowDiorama: React.FC<ThreeBurrowDioramaProps> = ({ mascot, 
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(container);
 
-    // 10. Cleanup
+    // 10. Complete Cleanup of all 3D geometries and materials
     return () => {
       cancelAnimationFrame(stateRef.current.animId);
       resizeObserver.disconnect();
       domElement.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
 
-      floorGeo.dispose();
-      floorMat.dispose();
-      wallGeoZ.dispose();
-      wallGeoX.dispose();
-      wallMat.dispose();
+      scene.traverse((object) => {
+        if (object instanceof THREE.Mesh) {
+          if (object.geometry) object.geometry.dispose();
+          if (Array.isArray(object.material)) {
+            object.material.forEach((mat) => mat.dispose());
+          } else if (object.material) {
+            object.material.dispose();
+          }
+        }
+      });
+
       renderer.dispose();
       if (domElement.parentNode) {
         domElement.parentNode.removeChild(domElement);
@@ -316,7 +324,11 @@ export const ThreeBurrowDiorama: React.FC<ThreeBurrowDioramaProps> = ({ mascot, 
 
   return (
     <div className="relative w-full h-[260px] rounded-3xl overflow-hidden border-2 border-indigo-900/60 shadow-2xl bg-slate-950">
-      <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+      <div
+        ref={mountRef}
+        className="w-full h-full cursor-grab active:cursor-grabbing touch-none"
+        style={{ touchAction: 'none' }}
+      />
 
       {/* 3D Diorama Header Overlay */}
       <div className="absolute top-2.5 left-3 flex items-center gap-2 pointer-events-none">

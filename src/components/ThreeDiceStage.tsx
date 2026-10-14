@@ -301,6 +301,7 @@ export const ThreeDiceStage: React.FC<ThreeDiceStageProps> = ({
     domElement.addEventListener('pointerdown', handlePointerDown);
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
 
     // 8. Animation & Render Loop
     let rollAngle1 = 0;
@@ -400,6 +401,7 @@ export const ThreeDiceStage: React.FC<ThreeDiceStageProps> = ({
       domElement.removeEventListener('pointerdown', handlePointerDown);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
 
       // Dispose geometries, materials, textures, renderer
       diceGeo.dispose();
@@ -425,12 +427,16 @@ export const ThreeDiceStage: React.FC<ThreeDiceStageProps> = ({
         domElement.parentNode.removeChild(domElement);
       }
     };
-  }, []);
+  }, [activeMascot.id]);
 
   return (
     <div className="relative w-full h-[105px] flex items-center justify-center select-none overflow-hidden rounded-xl">
       {/* 3D WebGL Canvas Mount */}
-      <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+      <div
+        ref={mountRef}
+        className="w-full h-full cursor-grab active:cursor-grabbing touch-none"
+        style={{ touchAction: 'none' }}
+      />
 
       {/* 3D Badge Indicator Overlay */}
       <div className="absolute top-1 right-2 pointer-events-none">

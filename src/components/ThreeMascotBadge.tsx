@@ -132,6 +132,7 @@ export const ThreeMascotBadge: React.FC<ThreeMascotBadgeProps> = ({ mascot, isMa
     domElement.addEventListener('pointerdown', onPointerDown);
     window.addEventListener('pointermove', onPointerMove);
     window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
 
     // 6. Animation Loop
     let clock = new THREE.Clock();
@@ -156,14 +157,19 @@ export const ThreeMascotBadge: React.FC<ThreeMascotBadgeProps> = ({ mascot, isMa
       domElement.removeEventListener('pointerdown', onPointerDown);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
 
-      gemGeo.dispose();
-      gemMat.dispose();
-      wireMat.dispose();
-      ringGeo.dispose();
-      ringMat.dispose();
-      particleGeo.dispose();
-      particleMat.dispose();
+      scene.traverse((object) => {
+        if (object instanceof THREE.Mesh || object instanceof THREE.Points) {
+          if (object.geometry) object.geometry.dispose();
+          if (Array.isArray(object.material)) {
+            object.material.forEach((mat) => mat.dispose());
+          } else if (object.material) {
+            object.material.dispose();
+          }
+        }
+      });
+
       renderer.dispose();
       if (domElement.parentNode) {
         domElement.parentNode.removeChild(domElement);
@@ -173,7 +179,11 @@ export const ThreeMascotBadge: React.FC<ThreeMascotBadgeProps> = ({ mascot, isMa
 
   return (
     <div className="relative w-full h-[120px] flex items-center justify-center select-none overflow-hidden rounded-2xl bg-gradient-to-b from-indigo-950/40 to-slate-950/60 border border-amber-500/30">
-      <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+      <div
+        ref={mountRef}
+        className="w-full h-full cursor-grab active:cursor-grabbing touch-none"
+        style={{ touchAction: 'none' }}
+      />
       <div className="absolute bottom-1 right-2 pointer-events-none">
         <span className="text-[7.5px] font-black text-amber-300 uppercase tracking-widest bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-500/40">
           3D Interactive Trophy

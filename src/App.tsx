@@ -125,6 +125,7 @@ export default function App() {
 
   // Animation & Gameplay flags
   const [isRolling, setIsRolling] = useState(false);
+  const [diceValues, setDiceValues] = useState<[number, number]>([3, 4]);
   const [floatingToast, setFloatingToast] = useState<{ id: number; text: string; color: string } | null>(null);
 
   // Modal open states
@@ -806,6 +807,7 @@ export default function App() {
     // Roll two dice (sum 2 to 12)
     const dice1 = Math.floor(Math.random() * 6) + 1;
     const dice2 = Math.floor(Math.random() * 6) + 1;
+    setDiceValues([dice1, dice2]);
     const totalSteps = dice1 + dice2;
     const startIndex = gameState.currentTileIndex;
 
@@ -1273,6 +1275,7 @@ export default function App() {
             onToggleMultiplier={toggleMultiplier}
             onOpenPuzzleArcade={() => setIsPuzzleHubOpen(true)}
             onTileClick={(tile) => handleTileLanded(tile, gameState.rollMultiplier)}
+            diceValues={diceValues}
           />
         )}
 
@@ -1458,6 +1461,7 @@ export default function App() {
             onUpgradeLandmark={handleUpgradeLandmark}
             onAdvanceNextTown={handleAdvanceNextTown}
             onOpenAdCinema={() => setIsAdStationOpen(true)}
+            onOpen3DTownMap={() => setActiveTab('burrows')}
           />
         )}
 
@@ -1488,26 +1492,38 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <div className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col gap-1">
-                <span className="text-xl">🎲</span>
-                <div className="text-xs font-black text-white">+30 Free Rolls</div>
+              <button
+                onClick={() => setIsAdStationOpen(true)}
+                className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-850 flex flex-col gap-1 text-left transition-all cursor-pointer active:scale-98 shadow-sm group"
+              >
+                <span className="text-xl group-hover:scale-110 transition-transform">🎲</span>
+                <div className="text-xs font-black text-white group-hover:text-cyan-300 transition-colors">+30 Free Rolls</div>
                 <div className="text-[9px] text-slate-400">Keep rolling without running dry</div>
-              </div>
-              <div className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col gap-1">
-                <span className="text-xl">💰</span>
-                <div className="text-xs font-black text-white">+45,000 Coins</div>
+              </button>
+              <button
+                onClick={() => setIsAdStationOpen(true)}
+                className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-850 flex flex-col gap-1 text-left transition-all cursor-pointer active:scale-98 shadow-sm group"
+              >
+                <span className="text-xl group-hover:scale-110 transition-transform">💰</span>
+                <div className="text-xs font-black text-white group-hover:text-amber-300 transition-colors">+45,000 Coins</div>
                 <div className="text-[9px] text-slate-400">Build town landmarks in one tap</div>
-              </div>
-              <div className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col gap-1">
-                <span className="text-xl">⚡</span>
-                <div className="text-xs font-black text-white">2X Multiplier Boost</div>
+              </button>
+              <button
+                onClick={() => setIsAdStationOpen(true)}
+                className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-purple-500/50 hover:bg-slate-850 flex flex-col gap-1 text-left transition-all cursor-pointer active:scale-98 shadow-sm group"
+              >
+                <span className="text-xl group-hover:scale-110 transition-transform">⚡</span>
+                <div className="text-xs font-black text-white group-hover:text-purple-300 transition-colors">2X Multiplier Boost</div>
                 <div className="text-[9px] text-slate-400">Double every tile payoff</div>
-              </div>
-              <div className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col gap-1">
-                <span className="text-xl">🎡</span>
-                <div className="text-xs font-black text-white">Mega Jackpot</div>
+              </button>
+              <button
+                onClick={() => setIsAdStationOpen(true)}
+                className="p-3 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-pink-500/50 hover:bg-slate-850 flex flex-col gap-1 text-left transition-all cursor-pointer active:scale-98 shadow-sm group"
+              >
+                <span className="text-xl group-hover:scale-110 transition-transform">🎡</span>
+                <div className="text-xs font-black text-white group-hover:text-pink-300 transition-colors">Mega Jackpot</div>
                 <div className="text-[9px] text-slate-400">+60,000 Coins & +40 Dice bundle</div>
-              </div>
+              </button>
             </div>
           </div>
         )}
@@ -1518,6 +1534,7 @@ export default function App() {
             activeMascot={activeMascot}
             playerCoins={gameState.coins}
             burrows={currentBurrows}
+            town={currentTown}
             undergroundDen={gameState.undergroundDen}
             onSelectActiveMascot={(mascotId) => {
               setGameState((prev) => ({ ...prev, activeMascotId: mascotId }));
@@ -1535,6 +1552,7 @@ export default function App() {
               showToast(`✨ Collected +${amount.toLocaleString()} daily stash coins!`, '#10b981');
             }}
             onOpenTradingPost={() => setIsTradingPostOpen(true)}
+            onUpgradeLandmark={handleUpgradeLandmark}
             duplicateTradesCount={duplicateTradesCount}
           />
         )}
@@ -1704,6 +1722,7 @@ export default function App() {
         onSelectMascot={(id) => setGameState((prev) => ({ ...prev, activeMascotId: id }))}
         onUpgradeMascot={handleUpgradeMascot}
         onOpenScanner={() => setIsScannerOpen(true)}
+        onOpenBurrows={() => setActiveTab('burrows')}
         onClose={() => setIsMascotModalOpen(false)}
       />
 
