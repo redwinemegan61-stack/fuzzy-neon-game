@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Sparkles, Volume2, ShieldCheck, X, Check, Plus, Zap, ArrowUpCircle, TrendingUp, Coins, Award, Music } from 'lucide-react';
+import { Sparkles, Volume2, ShieldCheck, X, Check, Plus, Zap, ArrowUpCircle, TrendingUp, Coins, Award, Music, Crown } from 'lucide-react';
 import { Mascot } from '../types';
 import { MascotAvatar } from './MascotAvatar';
 import { SoundEngine } from '../utils/sound';
 import { MAX_MASCOT_LEVEL, getMascotUpgradeCost, calculateMascotMultiplier } from '../utils/mascotLeveling';
+import { ThreeMascotBadge } from './ThreeMascotBadge';
 
 interface MascotDetailModalProps {
   isOpen: boolean;
@@ -222,31 +223,83 @@ export const MascotDetailModal: React.FC<MascotDetailModalProps> = ({
               />
             </div>
 
-            {/* Multiplier Progression Display */}
+            {/* Multiplier Progression Display & Max Level Celebratory Showcase */}
             {!isMaxLevel ? (
-              <div className="flex items-center justify-between bg-slate-950/80 rounded-xl p-2 border border-slate-800 mb-2 text-xs">
-                <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Current Boost</span>
-                  <span className="text-sm font-black text-cyan-300">
-                    {selectedMascot.uniqueAbility.multiplier}x
-                  </span>
+              <>
+                <div className="flex items-center justify-between bg-slate-950/80 rounded-xl p-2 border border-slate-800 mb-2 text-xs">
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Current Boost</span>
+                    <span className="text-sm font-black text-cyan-300">
+                      {selectedMascot.uniqueAbility.multiplier}x
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[10px] font-black">
+                    <TrendingUp className="w-3 h-3 text-emerald-400" />
+                    <span>+{multiplierGain > 0 ? multiplierGain : 0.15}x</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Next Level ({selectedMascot.level + 1})</span>
+                    <span className="text-sm font-black text-amber-300">
+                      {nextMultiplier}x
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 text-[10px] font-black">
-                  <TrendingUp className="w-3 h-3 text-emerald-400" />
-                  <span>+{multiplierGain > 0 ? multiplierGain : 0.15}x</span>
+
+                {/* Milestone Teaser Perk */}
+                <div className="w-full p-2 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-left mb-2.5 flex items-center gap-2">
+                  <span className="text-base flex-shrink-0">🔒</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[10px] font-black text-amber-300 flex items-center gap-1">
+                      <span>Max Level Milestone Reward (Lv.{MAX_MASCOT_LEVEL})</span>
+                    </div>
+                    <div className="text-[9px] text-slate-400 leading-tight">
+                      Reach Lv.{MAX_MASCOT_LEVEL} to unlock the exclusive <strong className="text-amber-300">Cosmetic Burrow Glow</strong> & 3D Celestial Crown!
+                    </div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Next Level ({selectedMascot.level + 1})</span>
-                  <span className="text-sm font-black text-amber-300">
-                    {nextMultiplier}x
-                  </span>
-                </div>
-              </div>
+              </>
             ) : (
-              <div className="p-2 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-center mb-2">
-                <span className="text-xs font-black text-emerald-300 flex items-center justify-center gap-1">
-                  ⭐ MAX LEVEL ABILITY (2.85x - 5.6x Multiplier Peak) ⭐
-                </span>
+              /* CELEBRATORY MAX LEVEL BADGE SECTION */
+              <div className="w-full p-3.5 rounded-2xl bg-gradient-to-br from-amber-950/90 via-slate-900 to-indigo-950/90 border-2 border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.4)] text-center mb-2.5 relative overflow-hidden">
+                {/* Radial Glow Burst */}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%,rgba(251,191,36,0.25)_0%,transparent_70%)] pointer-events-none" />
+
+                <div className="relative z-10 flex flex-col items-center">
+                  {/* Celebratory Badge Header */}
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-wider shadow-md mb-2">
+                    <Crown className="w-3.5 h-3.5 fill-slate-950" />
+                    <span>MAX LEVEL TRANSCENDENCE UNLOCKED</span>
+                    <Sparkles className="w-3.5 h-3.5 fill-slate-950" />
+                  </div>
+
+                  {/* 3D Interactive Mascot Trophy */}
+                  <div className="w-full my-1">
+                    <ThreeMascotBadge mascot={selectedMascot} isMaxLevel={true} />
+                  </div>
+
+                  {/* Cosmetic Glow Unlock Status Banner */}
+                  <div className="w-full p-2.5 rounded-xl bg-slate-950/90 border border-amber-400/60 text-left mt-2 shadow-[0_0_15px_rgba(251,191,36,0.25)]">
+                    <div className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-lg bg-amber-400/25 border border-amber-400 flex items-center justify-center text-amber-300 text-base shadow-[0_0_12px_rgba(251,191,36,0.8)] animate-pulse flex-shrink-0">
+                        👑
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[11px] font-black text-amber-300 uppercase tracking-wide flex items-center gap-1">
+                          <span>Cosmetic Burrow Glow: ACTIVE!</span>
+                          <span className="text-[9px] bg-amber-400 text-slate-950 px-1 rounded font-black">PERMANENT</span>
+                        </div>
+                        <div className="text-[9px] text-slate-200 leading-tight mt-0.5">
+                          {selectedMascot.name}&apos;s burrow icon now radiates with an exclusive celestial starlight cosmetic glow across the sanctuary!
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-[10px] font-black text-emerald-400 mt-2 flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-emerald-400" />
+                    <span>Peak Multiplier: {selectedMascot.uniqueAbility.multiplier}x Maxed Out!</span>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -272,8 +325,9 @@ export const MascotDetailModal: React.FC<MascotDetailModalProps> = ({
                 </div>
               </motion.button>
             ) : (
-              <div className="w-full py-2 rounded-xl bg-slate-950 text-slate-400 border border-slate-800 text-center text-xs font-bold">
-                Maxed Out! Maximum Resource Harvesting Efficiency!
+              <div className="w-full py-2 rounded-xl bg-slate-950 text-amber-300 border border-amber-500/40 text-center text-xs font-black flex items-center justify-center gap-1.5 shadow-sm">
+                <Crown className="w-3.5 h-3.5 fill-amber-300" />
+                <span>Max Level Reached! All Celestial Powers Unlocked!</span>
               </div>
             )}
 

@@ -27,6 +27,7 @@ import {
   Sparkle,
   Layers,
   Moon,
+  Crown,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Mascot, MascotBurrow, BurrowFeature, BurrowStyleOption } from '../types';
@@ -35,6 +36,8 @@ import { SoundEngine } from '../utils/sound';
 import { SurfaceSnuggleNookDiorama } from './SurfaceSnuggleNookDiorama';
 import { UndergroundDenView } from './UndergroundDenView';
 import { FuzzyDollhouseBurrowView } from './FuzzyDollhouseBurrowView';
+import { ThreeBurrowDiorama } from './ThreeBurrowDiorama';
+import { MAX_MASCOT_LEVEL } from '../utils/mascotLeveling';
 import {
   MASCOT_NOOK_SIGNATURES,
   MascotNookSignature,
@@ -80,7 +83,7 @@ export const MascotBurrowsView: React.FC<MascotBurrowsViewProps> = ({
   onOpenTradingPost,
   duplicateTradesCount = 0,
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'dollhouse' | 'shadowbox' | 'upgrades'>('dollhouse');
+  const [activeSubTab, setActiveSubTab] = useState<'dollhouse' | 'shadowbox' | 'upgrades' | '3d_diorama'>('dollhouse');
   const [selectedMascotId, setSelectedMascotId] = useState<string>(activeMascot.id);
   const [activeFeatureModal, setActiveFeatureModal] = useState<BurrowFeature | null>(null);
   const [mascotChatQuote, setMascotChatQuote] = useState<string | null>(null);
@@ -220,6 +223,21 @@ export const MascotBurrowsView: React.FC<MascotBurrowsViewProps> = ({
           <span>Style Catalog</span>
         </button>
 
+        <button
+          onClick={() => {
+            setActiveSubTab('3d_diorama');
+            SoundEngine.playTileStep();
+          }}
+          className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+            activeSubTab === '3d_diorama'
+              ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 shadow-md font-black scale-102'
+              : 'text-cyan-300 hover:text-white hover:bg-cyan-950/40 border border-cyan-500/30'
+          }`}
+        >
+          <span className="text-sm">🎮</span>
+          <span>3D Diorama</span>
+        </button>
+
         {onOpenTradingPost && (
           <button
             onClick={() => {
@@ -277,14 +295,15 @@ export const MascotBurrowsView: React.FC<MascotBurrowsViewProps> = ({
         />
       )}
 
-      {/* RENDER BURROW ARCHITECTURAL UPGRADES TAB */}
-      {activeSubTab === 'upgrades' && (
-        <>
-          {/* Top Mascot Picker Carousel */}
+      {/* RENDER 3D BURROW DIORAMA (Interactive Three.js 3D Graphics) */}
+      {activeSubTab === '3d_diorama' && (
+        <div className="w-full flex flex-col gap-3">
+          {/* Mascot Picker Carousel */}
           <div className="w-full overflow-x-auto no-scrollbar flex items-center gap-2 pb-1">
             {mascots.map((mascot) => {
               const isSelected = mascot.id === selectedMascotId;
               const isEquipped = mascot.id === activeMascot.id;
+              const isMaxLvl = mascot.level >= MAX_MASCOT_LEVEL;
               const burrow = burrows[mascot.id];
               const burrowLvl = burrow?.features.reduce((sum, f) => sum + f.level, 0) || 0;
 
@@ -295,18 +314,25 @@ export const MascotBurrowsView: React.FC<MascotBurrowsViewProps> = ({
                     setSelectedMascotId(mascot.id);
                     SoundEngine.playTileStep();
                   }}
-                  className={`flex-shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-2xl border transition-all text-left cursor-pointer ${
+                  className={`flex-shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-2xl border transition-all text-left cursor-pointer relative ${
                     isSelected
-                      ? 'bg-slate-800/90 border-2 shadow-lg scale-102'
+                      ? isMaxLvl
+                        ? 'bg-gradient-to-r from-amber-950/90 via-slate-900 to-indigo-950/90 border-2 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-102'
+                        : 'bg-slate-800/90 border-2 shadow-lg scale-102'
+                      : isMaxLvl
+                      ? 'bg-slate-900/80 border-amber-500/50 hover:bg-slate-800/60 shadow-[0_0_10px_rgba(251,191,36,0.25)]'
                       : 'bg-slate-900/60 border-slate-800 hover:bg-slate-800/50 opacity-80'
                   }`}
                   style={{
-                    borderColor: isSelected ? mascot.furColor : undefined,
-                    boxShadow: isSelected ? `0 0 16px ${mascot.furColor}33` : undefined,
+                    borderColor: isSelected && !isMaxLvl ? mascot.furColor : undefined,
+                    boxShadow: isSelected && !isMaxLvl ? `0 0 16px ${mascot.furColor}33` : undefined,
                   }}
                 >
-                  <div className="w-9 h-9 flex-shrink-0">
-                    <MascotAvatar mascot={mascot} size="sm" showHairGlow={false} interactive={false} />
+                  <div className="w-9 h-9 flex-shrink-0 relative">
+                    <MascotAvatar mascot={mascot} size="sm" showHairGlow={isMaxLvl} interactive={false} />
+                    {isMaxLvl && (
+                      <span className="absolute -top-1 -right-1 text-[8px] animate-bounce">👑</span>
+                    )}
                   </div>
                   <div className="flex flex-col">
                     <div className="flex items-center gap-1.5">
@@ -317,9 +343,110 @@ export const MascotBurrowsView: React.FC<MascotBurrowsViewProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1 text-[10px] text-slate-400">
-                      <Home className="w-3 h-3 text-amber-400" />
-                      <span>Burrow Lv.{burrowLvl}</span>
+                    <div className="flex items-center gap-1 text-[10px]">
+                      <Home
+                        className={`w-3 h-3 ${
+                          isMaxLvl
+                            ? 'text-amber-300 drop-shadow-[0_0_6px_rgba(251,191,36,0.95)] animate-pulse'
+                            : 'text-amber-400'
+                        }`}
+                      />
+                      <span className={isMaxLvl ? 'text-amber-300 font-black' : 'text-slate-400'}>
+                        Burrow Lv.{burrowLvl} {isMaxLvl ? '✨' : ''}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Three.js 3D Diorama Stage */}
+          <ThreeBurrowDiorama mascot={currentMascot} burrow={currentBurrow} />
+
+          {/* Diorama Info & Cosmetic Glow Status */}
+          <div className="w-full p-3 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">✨</span>
+              <div>
+                <span className="font-black text-white block">
+                  {currentMascot.name}&apos;s 3D Snuggle Sanctuary
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  {currentMascot.level >= MAX_MASCOT_LEVEL
+                    ? '👑 Max Level Cosmetic Crown Shrine is glowing in the room center!'
+                    : `Reach Lv.${MAX_MASCOT_LEVEL} to unlock the 3D Crown Shrine & Cosmetic Glow!`}
+                </span>
+              </div>
+            </div>
+            {currentMascot.level >= MAX_MASCOT_LEVEL && (
+              <span className="px-2 py-1 rounded-xl bg-amber-400 text-slate-950 font-black text-[10px] uppercase shadow-[0_0_12px_rgba(251,191,36,0.5)]">
+                Max Cosmetic Active
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* RENDER BURROW ARCHITECTURAL UPGRADES TAB */}
+      {activeSubTab === 'upgrades' && (
+        <>
+          {/* Top Mascot Picker Carousel */}
+          <div className="w-full overflow-x-auto no-scrollbar flex items-center gap-2 pb-1">
+            {mascots.map((mascot) => {
+              const isSelected = mascot.id === selectedMascotId;
+              const isEquipped = mascot.id === activeMascot.id;
+              const isMaxLvl = mascot.level >= MAX_MASCOT_LEVEL;
+              const burrow = burrows[mascot.id];
+              const burrowLvl = burrow?.features.reduce((sum, f) => sum + f.level, 0) || 0;
+
+              return (
+                <button
+                  key={mascot.id}
+                  onClick={() => {
+                    setSelectedMascotId(mascot.id);
+                    SoundEngine.playTileStep();
+                  }}
+                  className={`flex-shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-2xl border transition-all text-left cursor-pointer relative ${
+                    isSelected
+                      ? isMaxLvl
+                        ? 'bg-gradient-to-r from-amber-950/90 via-slate-900 to-indigo-950/90 border-2 border-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.6)] scale-102'
+                        : 'bg-slate-800/90 border-2 shadow-lg scale-102'
+                      : isMaxLvl
+                      ? 'bg-slate-900/80 border-amber-500/50 hover:bg-slate-800/60 shadow-[0_0_10px_rgba(251,191,36,0.25)]'
+                      : 'bg-slate-900/60 border-slate-800 hover:bg-slate-800/50 opacity-80'
+                  }`}
+                  style={{
+                    borderColor: isSelected && !isMaxLvl ? mascot.furColor : undefined,
+                    boxShadow: isSelected && !isMaxLvl ? `0 0 16px ${mascot.furColor}33` : undefined,
+                  }}
+                >
+                  <div className="w-9 h-9 flex-shrink-0 relative">
+                    <MascotAvatar mascot={mascot} size="sm" showHairGlow={isMaxLvl} interactive={false} />
+                    {isMaxLvl && (
+                      <span className="absolute -top-1 -right-1 text-[8px] animate-bounce">👑</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-black text-white">{mascot.name}</span>
+                      {isEquipped && (
+                        <span className="px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[9px] font-black uppercase">
+                          Equipped
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 text-[10px]">
+                      <Home
+                        className={`w-3 h-3 ${
+                          isMaxLvl
+                            ? 'text-amber-300 drop-shadow-[0_0_6px_rgba(251,191,36,0.95)] animate-pulse'
+                            : 'text-amber-400'
+                        }`}
+                      />
+                      <span className={isMaxLvl ? 'text-amber-300 font-black' : 'text-slate-400'}>
+                        Burrow Lv.{burrowLvl} {isMaxLvl ? '✨' : ''}
+                      </span>
                     </div>
                   </div>
                 </button>

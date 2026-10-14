@@ -29,6 +29,7 @@ import { TradingPostModal } from './components/TradingPostModal';
 import { INITIAL_TRADING_POST_STATE, BURROW_TRADE_ITEMS } from './data/tradingPostData';
 import { ACHIEVEMENTS, getAchievementProgress } from './data/achievementsData';
 import { AdStationModal } from './components/AdStationModal';
+import { BoardTileEventPopup, BoardTileEventData } from './components/BoardTileEventPopup';
 import confetti from 'canvas-confetti';
 
 const STORAGE_KEY = 'neon_fuzz_game_save_v1';
@@ -141,6 +142,7 @@ export default function App() {
   const [levelUpData, setLevelUpData] = useState<LevelUpData | null>(null);
   const [isStreakModalOpen, setIsStreakModalOpen] = useState(false);
   const [isTradingPostOpen, setIsTradingPostOpen] = useState(false);
+  const [boardTileEvent, setBoardTileEvent] = useState<BoardTileEventData | null>(null);
   const [dailyRewardPending, setDailyRewardPending] = useState<{
     puzzle: DailyFeaturedPuzzle;
     coins: number;
@@ -341,10 +343,18 @@ export default function App() {
     });
 
     addXp(180 * currentLvl);
-    showToast(
-      `🎉 ${mascot.name} reached Level ${nextLvl}! Superpower upgraded to ${upgradedMultiplier}x multiplier!`,
-      '#ffe600'
-    );
+    if (nextLvl >= MAX_MASCOT_LEVEL) {
+      confetti({ particleCount: 120, spread: 100, origin: { y: 0.5 } });
+      showToast(
+        `👑 TRANSCENDENCE! ${mascot.name} reached MAX LEVEL ${MAX_MASCOT_LEVEL}! Cosmetic Burrow Glow UNLOCKED! ✨`,
+        '#ffe600'
+      );
+    } else {
+      showToast(
+        `🎉 ${mascot.name} reached Level ${nextLvl}! Superpower upgraded to ${upgradedMultiplier}x multiplier!`,
+        '#ffe600'
+      );
+    }
   };
 
   // Maintain burrows dictionary from INITIAL_MASCOT_BURROWS, persisted burrow states, and custom mascots
@@ -828,11 +838,24 @@ export default function App() {
     switch (tile.type) {
       case 'coin_small':
       case 'coin_big': {
-        let earned = tile.rewardValue * betMultiplier;
+        const baseAmount = tile.rewardValue * betMultiplier;
+        let earned = baseAmount;
+        let mascotBonus = 0;
         if (activeMascot.uniqueAbility.effectType === 'bonus_coins') {
           earned = Math.round(earned * activeMascot.uniqueAbility.multiplier);
+          mascotBonus = earned - baseAmount;
         }
-        SoundEngine.playCoinChime();
+        setBoardTileEvent({
+          id: `tile-${tile.id}-${Date.now()}`,
+          tile,
+          type: 'coins',
+          totalAmount: earned,
+          baseAmount,
+          multiplier: betMultiplier,
+          mascotBonusAmount: mascotBonus,
+          activeMascot,
+          xpEarned: 30 * betMultiplier,
+        });
         setGameState((prev) => ({
           ...prev,
           coins: prev.coins + earned,
@@ -842,7 +865,6 @@ export default function App() {
           },
         }));
         addXp(30 * betMultiplier);
-        showToast(`+${earned.toLocaleString()} Coins collected!`, '#39ff14');
         break;
       }
 
@@ -867,41 +889,75 @@ export default function App() {
       }
 
       case 'mascot_energy': {
-        let addedRolls = tile.rewardValue * betMultiplier;
+        const baseRolls = tile.rewardValue * betMultiplier;
+        let addedRolls = baseRolls;
+        let mascotBonus = 0;
         if (activeMascot.uniqueAbility.effectType === 'lucky_dice') {
           addedRolls = Math.round(addedRolls * (activeMascot.uniqueAbility.multiplier * 0.75));
+          mascotBonus = addedRolls - baseRolls;
         }
-        SoundEngine.playComboChime(2);
+        setBoardTileEvent({
+          id: `tile-${tile.id}-${Date.now()}`,
+          tile,
+          type: 'dice',
+          totalAmount: addedRolls,
+          baseAmount: baseRolls,
+          multiplier: betMultiplier,
+          mascotBonusAmount: mascotBonus,
+          activeMascot,
+          xpEarned: 25 * betMultiplier,
+        });
         setGameState((prev) => ({
           ...prev,
           rolls: Math.min(prev.maxRolls + 50, prev.rolls + addedRolls),
         }));
-        showToast(`+${addedRolls} Energy Dice Rolls! (${activeMascot.name} Lv.${activeMascot.level} Boost)`, '#38bdf8');
+        addXp(25 * betMultiplier);
         break;
       }
 
       case 'shield_vault': {
-        SoundEngine.playComboChime(1);
+        setBoardTileEvent({
+          id: `tile-${tile.id}-${Date.now()}`,
+          tile,
+          type: 'shield',
+          totalAmount: 1,
+          baseAmount: 1,
+          multiplier: betMultiplier,
+          activeMascot,
+          xpEarned: 25 * betMultiplier,
+        });
         setGameState((prev) => ({
           ...prev,
           shields: Math.min(prev.maxShields, prev.shields + 1),
         }));
-        showToast(`+1 Defense Shield armed!`, '#10b981');
+        addXp(25 * betMultiplier);
         break;
       }
 
       case 'landmark_star': {
-        let coinBonus = tile.rewardValue * betMultiplier;
+        const baseCoin = tile.rewardValue * betMultiplier;
+        let coinBonus = baseCoin;
+        let mascotBonus = 0;
         if (activeMascot.uniqueAbility.effectType === 'bonus_coins') {
           coinBonus = Math.round(coinBonus * activeMascot.uniqueAbility.multiplier);
+          mascotBonus = coinBonus - baseCoin;
         }
-        SoundEngine.playCoinChime();
+        setBoardTileEvent({
+          id: `tile-${tile.id}-${Date.now()}`,
+          tile,
+          type: 'star',
+          totalAmount: coinBonus,
+          baseAmount: baseCoin,
+          multiplier: betMultiplier,
+          mascotBonusAmount: mascotBonus,
+          activeMascot,
+          xpEarned: 60 * betMultiplier,
+        });
         setGameState((prev) => ({
           ...prev,
           coins: prev.coins + coinBonus,
         }));
         addXp(60 * betMultiplier);
-        showToast(`Star Boost! +${coinBonus.toLocaleString()} 🪙 & XP! (${activeMascot.name} Boost)`, '#fbbf24');
         break;
       }
 
@@ -1537,14 +1593,41 @@ export default function App() {
               setActiveTab('burrows');
               SoundEngine.playBoardHop();
             }}
-            className={`flex-1 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider flex flex-col items-center gap-0.5 transition-all ${
+            className={`flex-1 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider flex flex-col items-center gap-0.5 transition-all relative ${
               activeTab === 'burrows'
                 ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 text-slate-950 shadow-md'
+                : activeMascot.level >= MAX_MASCOT_LEVEL
+                ? 'text-amber-300 hover:text-amber-200'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Home className="w-4 h-4" />
-            <span className="text-[8.5px]">Burrows</span>
+            <div className="relative flex items-center justify-center">
+              <Home
+                className={`w-4 h-4 transition-transform ${
+                  activeMascot.level >= MAX_MASCOT_LEVEL
+                    ? 'text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,0.95)] scale-110'
+                    : ''
+                }`}
+              />
+              {/* Special Cosmetic Glow & Crown Aura for Max Level Active Mascot */}
+              {activeMascot.level >= MAX_MASCOT_LEVEL && (
+                <>
+                  <span className="absolute -top-2 -right-2 text-[9px] drop-shadow-md animate-bounce pointer-events-none">
+                    👑
+                  </span>
+                  <span className="absolute -inset-1.5 rounded-full bg-amber-400/25 blur-xs animate-pulse pointer-events-none -z-10" />
+                </>
+              )}
+            </div>
+            <span
+              className={`text-[8.5px] ${
+                activeMascot.level >= MAX_MASCOT_LEVEL
+                  ? 'font-black tracking-wide text-amber-300 drop-shadow-[0_0_6px_rgba(251,191,36,0.5)]'
+                  : ''
+              }`}
+            >
+              {activeMascot.level >= MAX_MASCOT_LEVEL ? 'Burrows ✨' : 'Burrows'}
+            </span>
           </button>
 
           <button
@@ -1764,6 +1847,16 @@ export default function App() {
         }}
         onToast={(text, color) => showToast(text, color)}
       />
+
+      {/* 11. Board Tile Event Popup (Punchy Framer Motion Entry/Exit for Coin & Dice Collection) */}
+      <AnimatePresence>
+        {boardTileEvent && (
+          <BoardTileEventPopup
+            event={boardTileEvent}
+            onClose={() => setBoardTileEvent(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

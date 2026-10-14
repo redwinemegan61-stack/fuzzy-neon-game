@@ -8,6 +8,7 @@ import { BoardTile, Mascot } from '../types';
 import { BOARD_TILES } from '../data/gameData';
 import { MascotAvatar } from './MascotAvatar';
 import { SoundEngine } from '../utils/sound';
+import { ThreeDiceStage } from './ThreeDiceStage';
 
 interface GameBoardProps {
   currentTileIndex: number;
@@ -62,6 +63,7 @@ export const GameBoard: React.FC<GameBoardProps> = React.memo(({
   onTileClick,
 }) => {
   const [diceVisuals, setDiceVisuals] = useState<[number, number]>([3, 4]);
+  const [is3DMode, setIs3DMode] = useState(true);
 
   const handleRoll = () => {
     if (isRolling || rolls < rollMultiplier) return;
@@ -82,34 +84,43 @@ export const GameBoard: React.FC<GameBoardProps> = React.memo(({
 
   return (
     <div className="w-full max-w-md mx-auto flex flex-col items-center">
-      {/* Current Tile Info Bar */}
-      <div className="w-full px-4 mb-2 flex items-center justify-between bg-slate-900/80 border border-slate-800 rounded-xl py-2 backdrop-blur-md">
-        <div className="flex items-center gap-2">
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-950 font-bold shadow-md"
-            style={{ backgroundColor: currentTile.neonColor }}
-          >
-            <TileIcon name={currentTile.iconName} className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Landed on
+      {/* Current Tile Info Bar with Framer Motion Entry/Exit */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentTile.id}
+          initial={{ opacity: 0.6, scale: 0.95, y: -4 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0.6, scale: 0.95, y: 4 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+          className="w-full px-4 mb-2 flex items-center justify-between bg-slate-900/80 border border-slate-800 rounded-xl py-2 backdrop-blur-md"
+        >
+          <div className="flex items-center gap-2">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-950 font-bold shadow-md transition-transform"
+              style={{ backgroundColor: currentTile.neonColor }}
+            >
+              <TileIcon name={currentTile.iconName} className="w-4 h-4" />
             </div>
-            <div className="text-xs font-black text-white flex items-center gap-1.5">
-              <span style={{ color: currentTile.neonColor }}>{currentTile.name}</span>
+            <div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Landed on
+              </div>
+              <div className="text-xs font-black text-white flex items-center gap-1.5">
+                <span style={{ color: currentTile.neonColor }}>{currentTile.name}</span>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="text-right">
-          <span className="text-[11px] font-bold text-amber-400 bg-amber-950/60 border border-amber-500/30 px-2 py-0.5 rounded-full">
-            {currentTile.type === 'coin_big' || currentTile.type === 'coin_small'
-              ? `+${currentTile.rewardValue * rollMultiplier} Coins`
-              : currentTile.type === 'mascot_energy'
-              ? `+${currentTile.rewardValue * rollMultiplier} Dice`
-              : 'Special Event'}
-          </span>
-        </div>
-      </div>
+          <div className="text-right">
+            <span className="text-[11px] font-bold text-amber-400 bg-amber-950/60 border border-amber-500/30 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+              {currentTile.type === 'coin_big' || currentTile.type === 'coin_small'
+                ? `+${currentTile.rewardValue * rollMultiplier} Coins`
+                : currentTile.type === 'mascot_energy'
+                ? `+${currentTile.rewardValue * rollMultiplier} Dice`
+                : 'Special Event'}
+            </span>
+          </div>
+        </motion.div>
+      </AnimatePresence>
 
       {/* Neon Board Grid Container */}
       <div className="w-full aspect-square relative bg-[#090b1d] border-2 border-indigo-900/50 rounded-3xl p-2.5 shadow-[0_0_40px_rgba(30,15,60,0.7)] overflow-hidden flex flex-col justify-between">
@@ -187,23 +198,49 @@ export const GameBoard: React.FC<GameBoardProps> = React.memo(({
               </span>
             </div>
 
-            {/* Dice Visual Display */}
-            <div className="flex items-center gap-2 mb-2">
-              <motion.div
-                animate={isRolling ? { rotate: [0, 180, 360], scale: [1, 1.2, 1] } : {}}
-                transition={{ duration: 0.4, repeat: isRolling ? Infinity : 0 }}
-                className="w-8 h-8 rounded-lg bg-gradient-to-br from-white to-slate-200 border-2 border-white/80 shadow-[0_0_12px_rgba(255,255,255,0.4)] flex items-center justify-center font-black text-slate-900 text-sm"
-              >
-                {diceVisuals[0]}
-              </motion.div>
-              <motion.div
-                animate={isRolling ? { rotate: [360, 180, 0], scale: [1, 1.2, 1] } : {}}
-                transition={{ duration: 0.4, repeat: isRolling ? Infinity : 0 }}
-                className="w-8 h-8 rounded-lg bg-gradient-to-br from-white to-slate-200 border-2 border-white/80 shadow-[0_0_12px_rgba(255,255,255,0.4)] flex items-center justify-center font-black text-slate-900 text-sm"
-              >
-                {diceVisuals[1]}
-              </motion.div>
-            </div>
+            {/* Interactive 3D WebGL Dice Stage vs 2D Fallback */}
+            {is3DMode ? (
+              <div className="w-full my-1 relative">
+                <ThreeDiceStage
+                  diceValues={diceVisuals}
+                  isRolling={isRolling}
+                  activeMascot={activeMascot}
+                  rollMultiplier={rollMultiplier}
+                />
+                <button
+                  onClick={() => setIs3DMode(false)}
+                  className="absolute top-1 left-2 text-[7.5px] font-bold text-slate-400/90 bg-slate-900/80 hover:text-white px-1.5 py-0.5 rounded border border-slate-700 uppercase transition-all"
+                  title="Switch to 2D Dice view"
+                >
+                  2D Mode
+                </button>
+              </div>
+            ) : (
+              <div className="w-full flex flex-col items-center my-1.5">
+                <div className="flex items-center gap-2 mb-1">
+                  <motion.div
+                    animate={isRolling ? { rotate: [0, 180, 360], scale: [1, 1.2, 1] } : {}}
+                    transition={{ duration: 0.4, repeat: isRolling ? Infinity : 0 }}
+                    className="w-8 h-8 rounded-lg bg-gradient-to-br from-white to-slate-200 border-2 border-white/80 shadow-[0_0_12px_rgba(255,255,255,0.4)] flex items-center justify-center font-black text-slate-900 text-sm"
+                  >
+                    {diceVisuals[0]}
+                  </motion.div>
+                  <motion.div
+                    animate={isRolling ? { rotate: [360, 180, 0], scale: [1, 1.2, 1] } : {}}
+                    transition={{ duration: 0.4, repeat: isRolling ? Infinity : 0 }}
+                    className="w-8 h-8 rounded-lg bg-gradient-to-br from-white to-slate-200 border-2 border-white/80 shadow-[0_0_12px_rgba(255,255,255,0.4)] flex items-center justify-center font-black text-slate-900 text-sm"
+                  >
+                    {diceVisuals[1]}
+                  </motion.div>
+                </div>
+                <button
+                  onClick={() => setIs3DMode(true)}
+                  className="text-[7.5px] font-black text-cyan-300 bg-cyan-950/80 px-2 py-0.5 rounded-full border border-cyan-500/40 uppercase shadow-xs hover:bg-cyan-900 transition-all"
+                >
+                  Switch to 3D Graphics 🎮
+                </button>
+              </div>
+            )}
 
             {/* Rolls Remaining Counter */}
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
@@ -337,7 +374,7 @@ const TileCard: React.FC<TileCardProps> = React.memo(({
         />
       )}
 
-      {/* Pawn Indicator when player is on this tile */}
+      {/* Pawn Indicator & Floating Reward Popup when player is on this tile */}
       <AnimatePresence>
         {isCurrent && (
           <motion.div
@@ -357,6 +394,38 @@ const TileCard: React.FC<TileCardProps> = React.memo(({
               </div>
             </div>
             <div className="w-2 h-2 rotate-45 bg-white mx-auto -mt-1 shadow" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Tile Event Value Badge with punchy Framer Motion entry/exit */}
+      <AnimatePresence>
+        {isCurrent && !isRolling && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.5 }}
+            animate={{ opacity: 1, y: -26, scale: [0.5, 1.2, 1] }}
+            exit={{ opacity: 0, y: -38, scale: 0.6 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 20 }}
+            className="absolute -top-3 left-1/2 -translate-x-1/2 z-40 pointer-events-none whitespace-nowrap"
+          >
+            <div
+              className="px-1.5 py-0.5 rounded-full text-[8px] font-black shadow-[0_0_10px_rgba(0,0,0,0.9)] border flex items-center gap-0.5 backdrop-blur-md"
+              style={{
+                backgroundColor: '#090b22',
+                borderColor: tile.neonColor,
+                color: tile.neonColor,
+              }}
+            >
+              <span>
+                {tile.type === 'coin_big' || tile.type === 'coin_small'
+                  ? `🪙 +${tile.rewardValue}`
+                  : tile.type === 'mascot_energy'
+                  ? `🎲 +${tile.rewardValue}`
+                  : tile.type === 'shield_vault'
+                  ? `🛡️ +1`
+                  : `⭐ +${tile.rewardValue}`}
+              </span>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
