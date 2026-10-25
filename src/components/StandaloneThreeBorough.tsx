@@ -579,7 +579,7 @@ export const StandaloneThreeBorough: React.FC<StandaloneThreeBoroughProps> = ({
       setPettingCount((prev) => prev + 1);
       setShowPetHeartToast(true);
       setTimeout(() => setShowPetHeartToast(false), 1200);
-      SoundEngine.playMascotSqueak('happy');
+      SoundEngine.playMascotSqueak('giggle');
     };
 
     const onPointerUp = (e: PointerEvent) => {
@@ -860,7 +860,7 @@ export const StandaloneThreeBorough: React.FC<StandaloneThreeBoroughProps> = ({
                     : 'bg-slate-950/80 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700'
                 }`}
               >
-                <span>{m.avatarIcon || '🐾'}</span>
+                <span>{m.earStyle === 'bunny' ? '🐰' : m.earStyle === 'cat' ? '🦊' : m.earStyle === 'bear' ? '🐼' : m.earStyle === 'tuft' ? '🦌' : '🐾'}</span>
                 <span>{m.name}</span>
                 <span className="opacity-75">Lv.{m.level}</span>
               </button>

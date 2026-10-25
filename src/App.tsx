@@ -144,6 +144,17 @@ export default function App() {
   const [isStreakModalOpen, setIsStreakModalOpen] = useState(false);
   const [isTradingPostOpen, setIsTradingPostOpen] = useState(false);
   const [boardTileEvent, setBoardTileEvent] = useState<BoardTileEventData | null>(null);
+  const [abilityMultiplierEvent, setAbilityMultiplierEvent] = useState<{
+    id: string;
+    type: 'coins' | 'dice';
+    multiplier: number;
+    bonusAmount: number;
+  } | null>(null);
+  const [masteredPuzzleCategories, setMasteredPuzzleCategories] = useState<string[]>([
+    'gem_match',
+    'word_find',
+  ]);
+  const [recentMasteryCategory, setRecentMasteryCategory] = useState<string | null>('gem_match');
   const [dailyRewardPending, setDailyRewardPending] = useState<{
     puzzle: DailyFeaturedPuzzle;
     coins: number;
@@ -847,6 +858,12 @@ export default function App() {
           earned = Math.round(earned * activeMascot.uniqueAbility.multiplier);
           mascotBonus = earned - baseAmount;
         }
+        setAbilityMultiplierEvent({
+          id: `ability-coin-${tile.id}-${Date.now()}`,
+          type: 'coins',
+          multiplier: activeMascot.uniqueAbility.multiplier,
+          bonusAmount: mascotBonus > 0 ? mascotBonus : Math.round(baseAmount * 0.25),
+        });
         setBoardTileEvent({
           id: `tile-${tile.id}-${Date.now()}`,
           tile,
@@ -898,6 +915,12 @@ export default function App() {
           addedRolls = Math.round(addedRolls * (activeMascot.uniqueAbility.multiplier * 0.75));
           mascotBonus = addedRolls - baseRolls;
         }
+        setAbilityMultiplierEvent({
+          id: `ability-dice-${tile.id}-${Date.now()}`,
+          type: 'dice',
+          multiplier: activeMascot.uniqueAbility.multiplier,
+          bonusAmount: mascotBonus > 0 ? mascotBonus : Math.max(1, Math.round(baseRolls * 0.25)),
+        });
         setBoardTileEvent({
           id: `tile-${tile.id}-${Date.now()}`,
           tile,
@@ -944,6 +967,12 @@ export default function App() {
           coinBonus = Math.round(coinBonus * activeMascot.uniqueAbility.multiplier);
           mascotBonus = coinBonus - baseCoin;
         }
+        setAbilityMultiplierEvent({
+          id: `ability-star-${tile.id}-${Date.now()}`,
+          type: 'coins',
+          multiplier: activeMascot.uniqueAbility.multiplier,
+          bonusAmount: mascotBonus > 0 ? mascotBonus : Math.round(baseCoin * 0.25),
+        });
         setBoardTileEvent({
           id: `tile-${tile.id}-${Date.now()}`,
           tile,
@@ -1140,6 +1169,8 @@ export default function App() {
   // Reflex Puzzle Completion Handler
   const handlePuzzleComplete = (reward: { coins: number; xp: number; streak: number; diceBonus: number }) => {
     setIsPuzzleOpen(false);
+    setRecentMasteryCategory('reflex');
+    setMasteredPuzzleCategories((prev) => (prev.includes('reflex') ? prev : [...prev, 'reflex']));
     const featured = getDailyFeaturedPuzzle();
     const todayStr = getTodayDateString();
 
@@ -1167,6 +1198,22 @@ export default function App() {
   // Master Puzzle Hub Completion Handler (Word Find, Crosswords, Block Stacker)
   const handlePuzzleHubReward = (reward: { coins: number; xp: number; diceBonus: number; sourceTitle: string }) => {
     SoundEngine.playCoinChime();
+    const titleLower = reward.sourceTitle.toLowerCase();
+    const solvedCategory = titleLower.includes('crossword')
+      ? 'crossword'
+      : titleLower.includes('word')
+      ? 'word_find'
+      : titleLower.includes('laser')
+      ? 'laser_stack'
+      : titleLower.includes('block') || titleLower.includes('stack')
+      ? 'block_stack'
+      : puzzleHubCategory || 'gem_match';
+
+    setRecentMasteryCategory(solvedCategory);
+    setMasteredPuzzleCategories((prev) =>
+      prev.includes(solvedCategory) ? prev : [...prev, solvedCategory]
+    );
+
     setGameState((prev) => ({
       ...prev,
       coins: prev.coins + reward.coins,
@@ -1276,6 +1323,7 @@ export default function App() {
             onOpenPuzzleArcade={() => setIsPuzzleHubOpen(true)}
             onTileClick={(tile) => handleTileLanded(tile, gameState.rollMultiplier)}
             diceValues={diceValues}
+            abilityMultiplierEvent={abilityMultiplierEvent}
           />
         )}
 
@@ -1554,6 +1602,8 @@ export default function App() {
             onOpenTradingPost={() => setIsTradingPostOpen(true)}
             onUpgradeLandmark={handleUpgradeLandmark}
             duplicateTradesCount={duplicateTradesCount}
+            masteredPuzzleCategories={masteredPuzzleCategories}
+            recentMasteryCategory={recentMasteryCategory}
           />
         )}
       </main>

@@ -1,1 +1,71 @@
 @import "tailwindcss";
+
+@keyframes burrow-mastery-pulse {
+  0%, 100% {
+    box-shadow: 0 0 12px var(--burrow-glow-color, #22d3ee),
+                0 0 28px color-mix(in srgb, var(--burrow-glow-color, #22d3ee) 45%, transparent),
+                inset 0 0 14px color-mix(in srgb, var(--burrow-glow-color, #22d3ee) 30%, transparent);
+    transform: scale(1);
+    border-color: var(--burrow-glow-color, #22d3ee);
+  }
+  50% {
+    box-shadow: 0 0 24px var(--burrow-glow-color, #22d3ee),
+                0 0 52px color-mix(in srgb, var(--burrow-glow-color, #22d3ee) 80%, transparent),
+                inset 0 0 26px color-mix(in srgb, var(--burrow-glow-color, #22d3ee) 55%, transparent);
+    transform: scale(1.025);
+    border-color: #ffffff;
+  }
+}
+
+@keyframes burrow-stage-resonance {
+  0%, 100% {
+    box-shadow: 0 0 20px var(--burrow-glow-color, #f59e0b),
+                0 0 45px color-mix(in srgb, var(--burrow-glow-color, #f59e0b) 35%, transparent),
+                inset 0 0 35px color-mix(in srgb, var(--burrow-glow-color, #f59e0b) 25%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 38px var(--burrow-glow-color, #f59e0b),
+                0 0 80px color-mix(in srgb, var(--burrow-glow-color, #f59e0b) 65%, transparent),
+                inset 0 0 60px color-mix(in srgb, var(--burrow-glow-color, #f59e0b) 45%, transparent);
+  }
+}
+
+@keyframes burrow-ring-ripple {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+@keyframes mascot-ability-aura {
+  0%, 100% {
+    filter: drop-shadow(0 0 10px var(--ability-glow-color, #fbbf24))
+            drop-shadow(0 0 22px var(--ability-glow-color, #fbbf24));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 20px var(--ability-glow-color, #fbbf24))
+            drop-shadow(0 0 40px #ffffff);
+    transform: scale(1.09);
+  }
+}
+
+.burrow-mastery-pulse {
+  animation: burrow-mastery-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.burrow-stage-resonance {
+  animation: burrow-stage-resonance 2.2s ease-in-out infinite;
+}
+
+.burrow-ring-ripple {
+  animation: burrow-ring-ripple 1.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+.mascot-ability-aura {
+  animation: mascot-ability-aura 0.9s ease-in-out infinite;
+}

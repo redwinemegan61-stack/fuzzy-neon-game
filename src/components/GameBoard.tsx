@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Dices, Sparkles, Target, Coins, Gift, Star, 
@@ -12,6 +12,13 @@ import { ThreeDiceStage } from './ThreeDiceStage';
 import { MAX_MASCOT_LEVEL } from '../utils/mascotLeveling';
 import { NeonTailParticles, TILE_GRID_POSITIONS } from './NeonTailParticles';
 
+export interface AbilityMultiplierTriggerEvent {
+  id: string;
+  type: 'coins' | 'dice';
+  multiplier: number;
+  bonusAmount: number;
+}
+
 interface GameBoardProps {
   currentTileIndex: number;
   rolls: number;
@@ -24,6 +31,7 @@ interface GameBoardProps {
   onOpenPuzzleArcade?: () => void;
   onTileClick?: (tile: BoardTile) => void;
   diceValues?: [number, number];
+  abilityMultiplierEvent?: AbilityMultiplierTriggerEvent | null;
 }
 
 // Icon mapper for tiles
@@ -53,6 +61,19 @@ const RIGHT_TILES = BOARD_TILES.slice(5, 8);
 const BOTTOM_TILES = [...BOARD_TILES.slice(8, 13)].reverse();
 const LEFT_TILES = [...BOARD_TILES.slice(13, 16)].reverse();
 
+// Radial particle angles for ability multiplier burst
+const ABILITY_PARTICLES = Array.from({ length: 12 }, (_, idx) => {
+  const angleRad = (idx * 30 * Math.PI) / 180;
+  const dist = idx % 2 === 0 ? 58 : 42;
+  return {
+    id: idx,
+    dx: Math.cos(angleRad) * dist,
+    dy: Math.sin(angleRad) * dist,
+    delay: (idx % 4) * 0.04,
+    scale: idx % 2 === 0 ? 1.15 : 0.85,
+  };
+});
+
 export const GameBoard: React.FC<GameBoardProps> = React.memo(({
   currentTileIndex,
   rolls,
@@ -65,11 +86,86 @@ export const GameBoard: React.FC<GameBoardProps> = React.memo(({
   onOpenPuzzleArcade,
   onTileClick,
   diceValues: propDiceValues,
+  abilityMultiplierEvent,
 }) => {
   const [internalDiceVisuals, setInternalDiceVisuals] = useState<[number, number]>([3, 4]);
   const [is3DMode, setIs3DMode] = useState(true);
+  const [abilityBurst, setAbilityBurst] = useState<{
+    key: number;
+    type: 'coins' | 'dice';
+    color: string;
+    secondaryColor: string;
+    bonusText: string;
+  } | null>(null);
+  const wasRollingRef = useRef(isRolling);
 
   const diceVisuals: [number, number] = propDiceValues || internalDiceVisuals;
+
+  const triggerAbilityBurst = (type: 'coins' | 'dice', bonusAmount?: number) => {
+    const isCoin = type === 'coins';
+    const color = isCoin ? '#fbbf24' : '#00f0ff';
+    const secondaryColor = activeMascot.hairColors[0] || (isCoin ? '#f59e0b' : '#38bdf8');
+    const mult = activeMascot.uniqueAbility.multiplier;
+    const bonusLabel =
+      bonusAmount && bonusAmount > 0
+        ? `+${bonusAmount.toLocaleString()} ${isCoin ? '🪙' : '🎲'} (${mult}x!)`
+        : `⚡ ${mult}x ${isCoin ? 'COIN' : 'DICE'} BOOST!`;
+
+    setAbilityBurst({
+      key: Date.now(),
+      type,
+      color,
+      secondaryColor,
+      bonusText: bonusLabel,
+    });
+  };
+
+  // Trigger particle/glow when parent dispatches an abilityMultiplierEvent
+  useEffect(() => {
+    if (!abilityMultiplierEvent) return;
+    triggerAbilityBurst(abilityMultiplierEvent.type, abilityMultiplierEvent.bonusAmount);
+  }, [abilityMultiplierEvent?.id]);
+
+  // Also detect landing on a coin or dice collection tile after dice roll finishes
+  useEffect(() => {
+    if (wasRollingRef.current && !isRolling) {
+      const landedTile = BOARD_TILES[currentTileIndex];
+      if (landedTile) {
+        if (
+          landedTile.type === 'coin_small' ||
+          landedTile.type === 'coin_big' ||
+          landedTile.type === 'landmark_star'
+        ) {
+          triggerAbilityBurst('coins');
+        } else if (landedTile.type === 'mascot_energy') {
+          triggerAbilityBurst('dice');
+        }
+      }
+    }
+    wasRollingRef.current = isRolling;
+  }, [isRolling, currentTileIndex]);
+
+  // Auto-clear burst after animation completes
+  useEffect(() => {
+    if (!abilityBurst) return;
+    const timer = setTimeout(() => {
+      setAbilityBurst(null);
+    }, 2400);
+    return () => clearTimeout(timer);
+  }, [abilityBurst?.key]);
+
+  const handleTileSelect = (tile: BoardTile) => {
+    if (
+      tile.type === 'coin_small' ||
+      tile.type === 'coin_big' ||
+      tile.type === 'landmark_star'
+    ) {
+      triggerAbilityBurst('coins');
+    } else if (tile.type === 'mascot_energy') {
+      triggerAbilityBurst('dice');
+    }
+    onTileClick?.(tile);
+  };
 
   const handleRoll = () => {
     if (isRolling || rolls < rollMultiplier) return;
@@ -155,7 +251,7 @@ export const GameBoard: React.FC<GameBoardProps> = React.memo(({
               isCurrent={currentTileIndex === tile.index}
               activeMascot={activeMascot}
               isRolling={isRolling}
-              onClick={() => onTileClick?.(tile)}
+              onClick={() => handleTileSelect(tile)}
             />
           ))}
         </div>
@@ -171,23 +267,132 @@ export const GameBoard: React.FC<GameBoardProps> = React.memo(({
                 isCurrent={currentTileIndex === tile.index}
                 activeMascot={activeMascot}
                 isRolling={isRolling}
-                onClick={() => onTileClick?.(tile)}
+                onClick={() => handleTileSelect(tile)}
               />
             ))}
           </div>
 
           {/* Center Stage: Active Mascot & Dice Rolling Pedestal */}
-          <div className="flex-1 h-full mx-1 rounded-2xl bg-gradient-to-b from-slate-900/90 to-indigo-950/80 border border-indigo-500/20 flex flex-col items-center justify-center p-3 relative overflow-hidden backdrop-blur-md">
-            {/* Soft Radial Center Light */}
-            <div
-              className="absolute inset-0 opacity-25 blur-2xl pointer-events-none"
+          <div
+            className={`flex-1 h-full mx-1 rounded-2xl bg-gradient-to-b from-slate-900/90 to-indigo-950/80 border flex flex-col items-center justify-center p-3 relative overflow-hidden backdrop-blur-md transition-all duration-300 ${
+              abilityBurst ? 'border-amber-400/80' : 'border-indigo-500/20'
+            }`}
+            style={
+              abilityBurst
+                ? ({
+                    '--ability-glow-color': abilityBurst.color,
+                    boxShadow: `0 0 28px ${abilityBurst.color}55, inset 0 0 24px ${abilityBurst.color}33`,
+                  } as React.CSSProperties)
+                : undefined
+            }
+          >
+            {/* Soft Radial Center Light (intensifies when ability multiplier triggers) */}
+            <motion.div
+              animate={
+                abilityBurst
+                  ? { scale: [1, 1.45, 1.15], opacity: [0.3, 0.75, 0.35] }
+                  : { scale: 1, opacity: 0.25 }
+              }
+              transition={{ type: 'tween', duration: 0.9, ease: 'easeOut' }}
+              className="absolute inset-0 blur-2xl pointer-events-none"
               style={{
-                background: `radial-gradient(circle, ${activeMascot.hairColors[0] || '#00f0ff'} 0%, transparent 70%)`,
+                background: `radial-gradient(circle, ${
+                  abilityBurst ? abilityBurst.color : activeMascot.hairColors[0] || '#00f0ff'
+                } 0%, transparent 70%)`,
               }}
             />
 
-            {/* Mascot on Center Pedestal */}
-            <div className="relative mb-1">
+            {/* Mascot on Center Pedestal with Reactive Ability Glow & Particle Burst */}
+            <div
+              className={`relative mb-1 flex items-center justify-center rounded-full p-1 transition-all ${
+                abilityBurst ? 'mascot-ability-aura' : ''
+              }`}
+              style={
+                abilityBurst
+                  ? ({ '--ability-glow-color': abilityBurst.color } as React.CSSProperties)
+                  : undefined
+              }
+            >
+              {/* Expanding Ability Shockwave Rings & Radial Particle Burst */}
+              <AnimatePresence>
+                {abilityBurst && (
+                  <motion.div
+                    key={abilityBurst.key}
+                    initial={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none z-30"
+                  >
+                    {/* Dual Expanding Glow Rings */}
+                    <motion.div
+                      initial={{ scale: 0.5, opacity: 0.95 }}
+                      animate={{ scale: 2.35, opacity: 0 }}
+                      transition={{ type: 'tween', duration: 0.85, ease: 'easeOut' }}
+                      className="absolute w-16 h-16 rounded-full border-2"
+                      style={{
+                        borderColor: abilityBurst.color,
+                        boxShadow: `0 0 18px ${abilityBurst.color}`,
+                      }}
+                    />
+                    <motion.div
+                      initial={{ scale: 0.6, opacity: 0.85 }}
+                      animate={{ scale: 1.9, opacity: 0 }}
+                      transition={{ type: 'tween', duration: 0.95, delay: 0.12, ease: 'easeOut' }}
+                      className="absolute w-16 h-16 rounded-full border"
+                      style={{
+                        borderColor: abilityBurst.secondaryColor,
+                        boxShadow: `0 0 14px ${abilityBurst.secondaryColor}`,
+                      }}
+                    />
+
+                    {/* 12 Radial Burst Particles (Coins / Dice / Sparkles / Lightning) */}
+                    {ABILITY_PARTICLES.map((p) => (
+                      <motion.div
+                        key={p.id}
+                        initial={{ x: 0, y: 0, scale: 0.2, opacity: 1, rotate: 0 }}
+                        animate={{
+                          x: p.dx,
+                          y: p.dy,
+                          scale: [0.3, p.scale, 0],
+                          opacity: [1, 1, 0],
+                          rotate: p.id % 2 === 0 ? 180 : -180,
+                        }}
+                        transition={{
+                          type: 'tween',
+                          duration: 0.95,
+                          delay: p.delay,
+                          ease: 'easeOut',
+                        }}
+                        className="absolute text-xs select-none drop-shadow-[0_0_8px_rgba(255,255,255,0.9)]"
+                      >
+                        {p.id % 3 === 0
+                          ? abilityBurst.type === 'coins'
+                            ? '🪙'
+                            : '🎲'
+                          : p.id % 3 === 1
+                          ? '✨'
+                          : '⚡'}
+                      </motion.div>
+                    ))}
+
+                    {/* Floating Multiplier Bonus Callout */}
+                    <motion.div
+                      initial={{ y: 6, opacity: 0, scale: 0.75 }}
+                      animate={{ y: -36, opacity: [0, 1, 1, 0], scale: [0.8, 1.12, 1] }}
+                      transition={{ type: 'tween', duration: 1.6, ease: 'easeOut' }}
+                      className="absolute -top-3 whitespace-nowrap px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider text-slate-950 shadow-[0_0_16px_rgba(251,191,36,0.95)] border border-white z-40"
+                      style={{
+                        background:
+                          abilityBurst.type === 'coins'
+                            ? 'linear-gradient(90deg, #fde047, #f59e0b)'
+                            : 'linear-gradient(90deg, #67e8f9, #38bdf8)',
+                      }}
+                    >
+                      {abilityBurst.bonusText}
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {activeMascot.level >= MAX_MASCOT_LEVEL && (
                 <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-sm drop-shadow-[0_0_8px_rgba(251,191,36,0.9)] animate-bounce z-20 pointer-events-none">
                   👑
@@ -196,7 +401,8 @@ export const GameBoard: React.FC<GameBoardProps> = React.memo(({
               <MascotAvatar
                 mascot={activeMascot}
                 size="md"
-                isDancing={isRolling}
+                isDancing={isRolling || Boolean(abilityBurst)}
+                showHairGlow={Boolean(abilityBurst) || activeMascot.level >= MAX_MASCOT_LEVEL}
                 interactive={true}
               />
               <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-16 h-3 bg-black/60 rounded-full blur-sm -z-10" />
@@ -217,12 +423,35 @@ export const GameBoard: React.FC<GameBoardProps> = React.memo(({
               )}
             </div>
 
-            {/* Active Ability Pill with Upgraded Multiplier */}
+            {/* Active Ability Pill with Upgraded Multiplier & Reactive Glow */}
             <div className="text-center mb-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 bg-cyan-950/80 border border-cyan-500/30 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+              <motion.button
+                type="button"
+                onClick={() =>
+                  triggerAbilityBurst(
+                    activeMascot.uniqueAbility.effectType === 'lucky_dice' ? 'dice' : 'coins'
+                  )
+                }
+                animate={
+                  abilityBurst
+                    ? {
+                        scale: [1, 1.18, 1.05, 1],
+                      }
+                    : { scale: 1 }
+                }
+                transition={{ type: 'tween', duration: 0.65, ease: 'easeOut' }}
+                title="Tap to preview ability multiplier surge!"
+                className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 cursor-pointer transition-all ${
+                  abilityBurst
+                    ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-cyan-300 text-slate-950 border-2 border-white shadow-[0_0_18px_rgba(251,191,36,0.9)] font-black'
+                    : 'text-cyan-300 bg-cyan-950/80 border border-cyan-500/30 hover:border-cyan-400/60'
+                }`}
+              >
                 <span>⚡ {activeMascot.uniqueAbility.name}</span>
-                <span className="text-amber-300 font-black">({activeMascot.uniqueAbility.multiplier}x)</span>
-              </span>
+                <span className={abilityBurst ? 'text-slate-950 font-black' : 'text-amber-300 font-black'}>
+                  ({activeMascot.uniqueAbility.multiplier}x)
+                </span>
+              </motion.button>
             </div>
 
             {/* Interactive 3D WebGL Dice Stage vs 2D Fallback */}
@@ -287,7 +516,7 @@ export const GameBoard: React.FC<GameBoardProps> = React.memo(({
                 isCurrent={currentTileIndex === tile.index}
                 activeMascot={activeMascot}
                 isRolling={isRolling}
-                onClick={() => onTileClick?.(tile)}
+                onClick={() => handleTileSelect(tile)}
               />
             ))}
           </div>
@@ -302,7 +531,7 @@ export const GameBoard: React.FC<GameBoardProps> = React.memo(({
               isCurrent={currentTileIndex === tile.index}
               activeMascot={activeMascot}
               isRolling={isRolling}
-              onClick={() => onTileClick?.(tile)}
+              onClick={() => handleTileSelect(tile)}
             />
           ))}
         </div>

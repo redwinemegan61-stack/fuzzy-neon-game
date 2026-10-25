@@ -1,11 +1,10 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Town, Landmark, Mascot } from '../types';
 import { SoundEngine } from '../utils/sound';
 import confetti from 'canvas-confetti';
 import {
-  Sun, Moon, Sunset, RotateCw, ZoomIn, ZoomOut, Maximize2,
-  Hammer, X, Sparkles, Building2, Eye, Compass
+  RotateCw, Hammer, X, Sparkles
 } from 'lucide-react';
 
 interface StandaloneThreeTownProps {
@@ -14,18 +13,18 @@ interface StandaloneThreeTownProps {
   playerLevel?: number;
   activeMascot: Mascot;
   allMascots?: Mascot[];
-  onUpgradeLandmark: (landmarkId: string, cost: number) => void;
+  onUpgradeLandmark?: (landmarkId: string, cost: number) => void;
   onSelectActiveMascot?: (mascotId: string) => void;
 }
 
 // Landmark 3D world coordinates on the standalone town landscape
 const LANDMARK_OFFSETS: Record<string, { x: number; z: number; label: string; icon: string }> = {
   Sparkles: { x: 0, z: -0.6, label: 'Town Hall & Clocktower', icon: 'Sparkles' }, // Plaza Center-North
-  Droplets: { x: 0, z: 2.2, label: 'Prism Fountain', icon: 'Droplets' },          // Plaza Center-South
+  Droplets: { x: 0, z: 1.9, label: 'Prism Fountain', icon: 'Droplets' },          // Plaza Center-South
   Home: { x: -3.4, z: -1.2, label: 'Guildhouse & Bakery', icon: 'Home' },        // West Village
   Utensils: { x: 3.5, z: -1.4, label: 'Star Windmill', icon: 'Utensils' },       // East Windmill Hill
-  Gamepad2: { x: -3.2, z: 2.0, label: 'Neon Arcade', icon: 'Gamepad2' },         // South-West Arcade
-  Radio: { x: 3.2, z: 2.2, label: 'Cinema & Broadcast', icon: 'Radio' },         // South-East Radio
+  Gamepad2: { x: -3.3, z: 1.9, label: 'Neon Arcade', icon: 'Gamepad2' },         // South-West Arcade
+  Radio: { x: 3.3, z: 2.0, label: 'Cinema & Broadcast', icon: 'Radio' },         // South-East Radio
   Music: { x: -1.8, z: -3.2, label: 'Sound Stage', icon: 'Music' },               // North-West
   Zap: { x: 1.8, z: -3.2, label: 'Quantum Beacon', icon: 'Zap' },                 // North-East
 };
@@ -43,9 +42,11 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
 
   // Inspector & selection state
   const [selectedLandmark, setSelectedLandmark] = useState<Landmark | null>(null);
+  const [isPlaygroundSelected, setIsPlaygroundSelected] = useState(false);
+  const [playgroundBoostCount, setPlaygroundBoostCount] = useState(0);
   const [timeOfDay, setTimeOfDay] = useState<'day' | 'twilight' | 'night'>('day');
   const [isAutoRotate, setIsAutoRotate] = useState(true);
-  const [cameraViewPreset, setCameraViewPreset] = useState<'overview' | 'plaza' | 'windmill' | 'street'>('overview');
+  const [cameraViewPreset, setCameraViewPreset] = useState<'overview' | 'plaza' | 'playground' | 'windmill'>('overview');
 
   // Internal mutable Three.js references
   const stateRef = useRef<{
@@ -58,6 +59,7 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
     orbit: { theta: number; phi: number; radius: number; target: THREE.Vector3 };
     interactiveObjects: THREE.Object3D[];
     selectionRing: THREE.Mesh | null;
+    playgroundSpinBoost: number;
     animatedProps: {
       windmillSails?: THREE.Object3D;
       fountainWater?: THREE.Points;
@@ -67,8 +69,12 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       beaconLight?: THREE.PointLight;
       wanderingMascots?: { group: THREE.Group; basePos: THREE.Vector3; angle: number; speed: number }[];
       streetLanterns?: THREE.PointLight[];
-      dustParticles?: THREE.Points;
       townHallClockHand?: THREE.Mesh;
+      treeCrowns?: { group: THREE.Group; phase: number }[];
+      merryGoRound?: THREE.Group;
+      swingSeats?: THREE.Group[];
+      seesawPlank?: THREE.Group;
+      blossomPetals?: THREE.Points;
     };
     raycaster: THREE.Raycaster;
     mouse: THREE.Vector2;
@@ -79,9 +85,10 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
     animId: 0,
     clock: new THREE.Clock(),
     dragStart: null,
-    orbit: { theta: 0.78, phi: 0.58, radius: 15.5, target: new THREE.Vector3(0, 0.4, 0) },
+    orbit: { theta: 0.55, phi: 0.56, radius: 15.8, target: new THREE.Vector3(0, 0.5, 0.5) },
     interactiveObjects: [],
     selectionRing: null,
+    playgroundSpinBoost: 0,
     animatedProps: {},
     raycaster: new THREE.Raycaster(),
     mouse: new THREE.Vector2(-999, -999),
@@ -92,20 +99,21 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
     const s = stateRef.current;
     if (cameraViewPreset === 'overview') {
       s.orbit.radius = 16.0;
-      s.orbit.phi = 0.62;
-      s.orbit.target.set(0, 0.5, 0);
+      s.orbit.phi = 0.6;
+      s.orbit.target.set(0, 0.5, 0.4);
     } else if (cameraViewPreset === 'plaza') {
       s.orbit.radius = 10.0;
       s.orbit.phi = 0.48;
-      s.orbit.target.set(0, 1.0, 0.8);
+      s.orbit.target.set(0, 1.0, 0.6);
+    } else if (cameraViewPreset === 'playground') {
+      s.orbit.radius = 7.8;
+      s.orbit.phi = 0.42;
+      s.orbit.theta = 0.15;
+      s.orbit.target.set(0, 0.85, 4.2);
     } else if (cameraViewPreset === 'windmill') {
       s.orbit.radius = 10.5;
       s.orbit.phi = 0.52;
       s.orbit.target.set(3.5, 1.2, -1.4);
-    } else if (cameraViewPreset === 'street') {
-      s.orbit.radius = 8.5;
-      s.orbit.phi = 0.28;
-      s.orbit.target.set(-1.0, 0.8, 1.0);
     }
   }, [cameraViewPreset]);
 
@@ -127,7 +135,7 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       night: 0x050818,
     };
     scene.background = new THREE.Color(bgColors[timeOfDay]);
-    scene.fog = new THREE.FogExp2(bgColors[timeOfDay], timeOfDay === 'night' ? 0.025 : 0.015);
+    scene.fog = new THREE.FogExp2(bgColors[timeOfDay], timeOfDay === 'night' ? 0.022 : 0.013);
 
     const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
     camera.position.set(0, 10, 16);
@@ -147,7 +155,7 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
     // 3. Lighting Rig (Full Day/Twilight/Night PBR Setup)
     const ambientLight = new THREE.AmbientLight(
       timeOfDay === 'night' ? 0x1d2951 : timeOfDay === 'twilight' ? 0x5b3366 : 0xf1f5f9,
-      timeOfDay === 'night' ? 1.5 : timeOfDay === 'twilight' ? 2.0 : 2.5
+      timeOfDay === 'night' ? 1.5 : timeOfDay === 'twilight' ? 2.1 : 2.6
     );
     scene.add(ambientLight);
 
@@ -180,11 +188,11 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
     const interactives: THREE.Object3D[] = [];
     stateRef.current.interactiveObjects = interactives;
 
-    // 4. STANDALONE 3D TOWN LANDSCAPE (NO cutaway cone!)
+    // 4. STANDALONE 3D TOWN LANDSCAPE
     const landscapeGroup = new THREE.Group();
 
     // Sturdy Beveled Foundation Pedestal (Granite & Stone Tiered Base)
-    const baseGeo = new THREE.CylinderGeometry(6.6, 6.8, 0.5, 48);
+    const baseGeo = new THREE.CylinderGeometry(7.0, 7.2, 0.5, 48);
     const baseMat = new THREE.MeshStandardMaterial({
       color: 0x1e293b,
       roughness: 0.85,
@@ -196,7 +204,7 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
     landscapeGroup.add(baseMesh);
 
     // Lush Green Meadow Surface
-    const meadowGeo = new THREE.CylinderGeometry(6.5, 6.5, 0.4, 48);
+    const meadowGeo = new THREE.CylinderGeometry(6.9, 6.9, 0.4, 48);
     const meadowColor = timeOfDay === 'night' ? 0x0f3820 : timeOfDay === 'twilight' ? 0x165b2d : 0x22c55e;
     const meadowMat = new THREE.MeshStandardMaterial({
       color: meadowColor,
@@ -209,9 +217,9 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
     landscapeGroup.add(meadowMesh);
 
     // Central Cobblestone Plaza (Circle with Stone Curb)
-    const plazaGeo = new THREE.CylinderGeometry(2.5, 2.5, 0.06, 32);
+    const plazaGeo = new THREE.CylinderGeometry(2.4, 2.4, 0.06, 32);
     const plazaMat = new THREE.MeshStandardMaterial({
-      color: 0x475569, // Slate cobblestone
+      color: 0x475569,
       roughness: 0.8,
       metalness: 0.15,
     });
@@ -221,7 +229,7 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
     landscapeGroup.add(plazaMesh);
 
     // Plaza Inset Pattern (Lighter Stone Ring)
-    const plazaRingGeo = new THREE.RingGeometry(1.6, 2.2, 32);
+    const plazaRingGeo = new THREE.RingGeometry(1.55, 2.15, 32);
     const plazaRingMat = new THREE.MeshStandardMaterial({
       color: 0x64748b,
       roughness: 0.7,
@@ -235,7 +243,7 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
     // Radiating Avenues / Stone Pathways to each district
     const roadAngles = [0, Math.PI / 4, Math.PI / 2, (3 * Math.PI) / 4, Math.PI, (5 * Math.PI) / 4, (3 * Math.PI) / 2, (7 * Math.PI) / 4];
     roadAngles.forEach((ang) => {
-      const roadGeo = new THREE.BoxGeometry(0.85, 0.05, 3.8);
+      const roadGeo = new THREE.BoxGeometry(0.8, 0.05, 3.8);
       const roadMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85 });
       const road = new THREE.Mesh(roadGeo, roadMat);
       road.rotation.y = ang;
@@ -244,50 +252,324 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       landscapeGroup.add(road);
     });
 
-    // Decorative Foliage: Trees, Shrubs & Flower Beds around town perimeter
-    const treePositions = [
-      { x: -4.8, z: 0.8 },
-      { x: -4.5, z: -3.0 },
-      { x: -1.2, z: 4.8 },
-      { x: 2.2, z: 4.6 },
-      { x: 4.8, z: 0.2 },
-      { x: 4.2, z: -3.5 },
-      { x: 0.2, z: -5.0 },
-      { x: -3.2, z: -4.5 },
+    // 4B. REALISTIC MULTI-BRANCHED ORGANIC 3D TREES & FLOWER RINGS
+    const treeSpecs: {
+      x: number;
+      z: number;
+      scale: number;
+      style: 'oak' | 'sakura' | 'autumn' | 'pine';
+    }[] = [
+      { x: -5.1, z: 0.6, scale: 1.15, style: 'oak' },
+      { x: -4.7, z: -2.9, scale: 1.05, style: 'sakura' },
+      { x: -2.2, z: 4.8, scale: 1.0, style: 'sakura' },
+      { x: 2.3, z: 4.7, scale: 1.1, style: 'oak' },
+      { x: 5.1, z: 0.3, scale: 1.2, style: 'autumn' },
+      { x: 4.5, z: -3.4, scale: 1.0, style: 'oak' },
+      { x: 0.1, z: -5.2, scale: 1.15, style: 'pine' },
+      { x: -3.4, z: -4.6, scale: 0.95, style: 'autumn' },
+      { x: -5.0, z: 3.2, scale: 0.9, style: 'pine' },
+      { x: 4.9, z: 3.3, scale: 0.95, style: 'sakura' },
     ];
 
-    treePositions.forEach((tp, idx) => {
+    const treeCrowns: { group: THREE.Group; phase: number }[] = [];
+
+    treeSpecs.forEach((ts, idx) => {
       const treeGroup = new THREE.Group();
-      treeGroup.position.set(tp.x, 0.35, tp.z);
+      treeGroup.position.set(ts.x, 0.35, ts.z);
+      treeGroup.scale.setScalar(ts.scale);
 
-      // Wood Trunk
-      const trunkGeo = new THREE.CylinderGeometry(0.12, 0.16, 0.7, 8);
-      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c3a21, roughness: 0.9 });
-      const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-      trunk.position.y = 0.35;
-      trunk.castShadow = true;
-      treeGroup.add(trunk);
-
-      // Layered Foliage Canopies
-      const foliageColor = idx % 2 === 0 ? 0x15803d : 0x16a34a;
-      const f1 = new THREE.Mesh(
-        new THREE.ConeGeometry(0.65, 0.8, 8),
-        new THREE.MeshStandardMaterial({ color: foliageColor, roughness: 0.8 })
+      // Stone Tree-Ring Planter & Wildflower Base
+      const ringStone = new THREE.Mesh(
+        new THREE.TorusGeometry(0.42, 0.06, 8, 16),
+        new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.85 })
       );
-      f1.position.y = 0.9;
-      f1.castShadow = true;
-      treeGroup.add(f1);
+      ringStone.rotation.x = Math.PI / 2;
+      ringStone.position.y = 0.03;
+      treeGroup.add(ringStone);
 
-      const f2 = new THREE.Mesh(
-        new THREE.ConeGeometry(0.5, 0.7, 8),
-        new THREE.MeshStandardMaterial({ color: foliageColor + 0x051a05, roughness: 0.8 })
-      );
-      f2.position.y = 1.35;
-      f2.castShadow = true;
-      treeGroup.add(f2);
+      // Flared Root Base + Realistic Tapered Bark Trunk
+      const barkMat = new THREE.MeshStandardMaterial({
+        color: ts.style === 'sakura' ? 0x4a2c2a : 0x5c3a21,
+        roughness: 0.92,
+      });
+
+      const rootFlare = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.28, 0.28, 10), barkMat);
+      rootFlare.position.y = 0.14;
+      rootFlare.castShadow = true;
+      treeGroup.add(rootFlare);
+
+      const mainTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.15, 0.85, 10), barkMat);
+      mainTrunk.position.y = 0.55;
+      mainTrunk.castShadow = true;
+      treeGroup.add(mainTrunk);
+
+      // Secondary Woody Boughs (3 angled branches)
+      const branchAngles = [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3];
+      branchAngles.forEach((bAng, bIdx) => {
+        const bough = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.07, 0.55, 8), barkMat);
+        bough.position.set(Math.cos(bAng) * 0.16, 0.92 + bIdx * 0.05, Math.sin(bAng) * 0.16);
+        bough.rotation.z = -Math.cos(bAng) * 0.55;
+        bough.rotation.x = Math.sin(bAng) * 0.55;
+        bough.castShadow = true;
+        treeGroup.add(bough);
+      });
+
+      // Multi-Clustered Organic Leaf Canopy
+      const crownGroup = new THREE.Group();
+      crownGroup.position.y = 1.15;
+
+      const palette =
+        ts.style === 'sakura'
+          ? [0xf472b6, 0xf9a8d4, 0xfbcfe8, 0xec4899]
+          : ts.style === 'autumn'
+          ? [0xd97706, 0xf59e0b, 0xea580c, 0xfbbf24]
+          : ts.style === 'pine'
+          ? [0x065f46, 0x047857, 0x059669, 0x10b981]
+          : [0x15803d, 0x16a34a, 0x22c55e, 0x4ade80];
+
+      // 6 organic foliage puffs arranged in a natural crown
+      const puffOffsets = [
+        { x: 0, y: 0.32, z: 0, r: 0.48 },
+        { x: -0.32, y: 0.08, z: 0.18, r: 0.38 },
+        { x: 0.34, y: 0.12, z: 0.16, r: 0.36 },
+        { x: 0.05, y: 0.1, z: -0.34, r: 0.39 },
+        { x: -0.24, y: 0.24, z: -0.22, r: 0.34 },
+        { x: 0.24, y: 0.26, z: -0.18, r: 0.33 },
+      ];
+
+      puffOffsets.forEach((po, pIdx) => {
+        const leafGeo = new THREE.DodecahedronGeometry(po.r, 1);
+        const leafMat = new THREE.MeshStandardMaterial({
+          color: palette[pIdx % palette.length],
+          roughness: 0.78,
+          flatShading: true,
+        });
+        const puff = new THREE.Mesh(leafGeo, leafMat);
+        puff.position.set(po.x, po.y, po.z);
+        puff.rotation.set(pIdx * 0.5, pIdx * 0.8, 0);
+        puff.castShadow = true;
+        puff.receiveShadow = true;
+        crownGroup.add(puff);
+      });
+
+      treeGroup.add(crownGroup);
+      treeCrowns.push({ group: crownGroup, phase: idx * 0.9 });
+
+      // Wildflowers around the base of the tree
+      const flowerColors = [0xf43f5e, 0xfacc15, 0xc084fc, 0x38bdf8];
+      for (let f = 0; f < 5; f++) {
+        const fAng = (f * Math.PI * 2) / 5 + idx;
+        const flower = new THREE.Mesh(
+          new THREE.SphereGeometry(0.055, 6, 6),
+          new THREE.MeshBasicMaterial({ color: flowerColors[f % flowerColors.length] })
+        );
+        flower.position.set(Math.cos(fAng) * 0.32, 0.06, Math.sin(fAng) * 0.32);
+        treeGroup.add(flower);
+      }
 
       landscapeGroup.add(treeGroup);
     });
+
+    // 4C. FUN INTERACTIVE 3D PLAYGROUND PARK ZONE (South Park District: x: 0, z: 4.35)
+    const playgroundGroup = new THREE.Group();
+    playgroundGroup.position.set(0, 0.36, 4.35);
+    playgroundGroup.name = 'town_playground';
+
+    // Soft Pastel Play Mat Pad with Rounded Wooden/Curb Border
+    const playPad = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.75, 1.8, 0.06, 32),
+      new THREE.MeshStandardMaterial({ color: 0x0d9488, roughness: 0.65 })
+    );
+    playPad.position.y = 0.03;
+    playPad.receiveShadow = true;
+    playgroundGroup.add(playPad);
+
+    const playPadInner = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.62, 1.62, 0.07, 32),
+      new THREE.MeshStandardMaterial({ color: 0x14b8a6, roughness: 0.7 })
+    );
+    playPadInner.position.y = 0.035;
+    playPadInner.receiveShadow = true;
+    playgroundGroup.add(playPadInner);
+
+    // 1) Spinning Merry-Go-Round Carousel (Left-Front of Playground)
+    const carouselGroup = new THREE.Group();
+    carouselGroup.position.set(-0.72, 0.08, 0.25);
+
+    const carouselDisc = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.48, 0.48, 0.06, 16),
+      new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.4, metalness: 0.2 })
+    );
+    carouselDisc.castShadow = true;
+    carouselGroup.add(carouselDisc);
+
+    // Inner Yellow Star Disc
+    const carouselInner = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.32, 0.32, 0.07, 16),
+      new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4 })
+    );
+    carouselGroup.add(carouselInner);
+
+    // Center Pole & Grab Bars
+    const centerPole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.035, 0.035, 0.42, 8),
+      new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.8, roughness: 0.2 })
+    );
+    centerPole.position.y = 0.21;
+    carouselGroup.add(centerPole);
+
+    for (let b = 0; b < 4; b++) {
+      const bar = new THREE.Mesh(
+        new THREE.TorusGeometry(0.18, 0.018, 6, 12, Math.PI),
+        new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.6 })
+      );
+      bar.rotation.y = (b * Math.PI) / 2;
+      bar.position.y = 0.06;
+      carouselGroup.add(bar);
+    }
+
+    // Cute Mini Mascot Riding the Merry-Go-Round!
+    const riderBody = new THREE.Mesh(
+      new THREE.SphereGeometry(0.14, 12, 12),
+      new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.4 })
+    );
+    riderBody.position.set(0.24, 0.18, 0);
+    carouselGroup.add(riderBody);
+
+    playgroundGroup.add(carouselGroup);
+
+    // 2) Rainbow Adventure Slide & Watchtower (Right-Back of Playground)
+    const slideGroup = new THREE.Group();
+    slideGroup.position.set(0.68, 0.06, -0.25);
+
+    // 4 Wooden Tower Posts
+    const postMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.7 });
+    [
+      [-0.22, -0.22],
+      [0.22, -0.22],
+      [-0.22, 0.22],
+      [0.22, 0.22],
+    ].forEach(([px, pz]) => {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.95, 8), postMat);
+      post.position.set(px, 0.47, pz);
+      post.castShadow = true;
+      slideGroup.add(post);
+    });
+
+    // Watchtower Platform Deck
+    const deck = new THREE.Mesh(
+      new THREE.BoxGeometry(0.56, 0.06, 0.56),
+      new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.6 })
+    );
+    deck.position.y = 0.62;
+    deck.castShadow = true;
+    slideGroup.add(deck);
+
+    // Peaked Playhouse Canopy Roof
+    const playRoof = new THREE.Mesh(
+      new THREE.ConeGeometry(0.46, 0.38, 4),
+      new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.5 })
+    );
+    playRoof.rotation.y = Math.PI / 4;
+    playRoof.position.y = 1.12;
+    playRoof.castShadow = true;
+    slideGroup.add(playRoof);
+
+    // Bright Yellow Slide Chute sloping down
+    const chute = new THREE.Mesh(
+      new THREE.BoxGeometry(0.26, 0.04, 0.85),
+      new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.25, metalness: 0.1 })
+    );
+    chute.position.set(0, 0.34, 0.52);
+    chute.rotation.x = 0.68;
+    chute.castShadow = true;
+    slideGroup.add(chute);
+
+    playgroundGroup.add(slideGroup);
+
+    // 3) Animated Dual Swing Set (North-West of Playground)
+    const swingFrameGroup = new THREE.Group();
+    swingFrameGroup.position.set(-0.35, 0.06, -0.58);
+
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, metalness: 0.5, roughness: 0.3 });
+    const topBar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.95, 8), frameMat);
+    topBar.rotation.z = Math.PI / 2;
+    topBar.position.y = 0.82;
+    swingFrameGroup.add(topBar);
+
+    // Left & Right A-Frame Legs
+    [-0.44, 0.44].forEach((lx) => {
+      const leg1 = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.88, 8), frameMat);
+      leg1.position.set(lx, 0.42, 0.18);
+      leg1.rotation.x = -0.22;
+      swingFrameGroup.add(leg1);
+
+      const leg2 = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.88, 8), frameMat);
+      leg2.position.set(lx, 0.42, -0.18);
+      leg2.rotation.x = 0.22;
+      swingFrameGroup.add(leg2);
+    });
+
+    // Two Animated Swing Seats pivoting from topBar
+    const swingSeats: THREE.Group[] = [];
+    [-0.2, 0.2].forEach((sx) => {
+      const pivotGroup = new THREE.Group();
+      pivotGroup.position.set(sx, 0.82, 0);
+
+      const chainMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.8 });
+      const chainL = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.55, 6), chainMat);
+      chainL.position.set(-0.07, -0.27, 0);
+      pivotGroup.add(chainL);
+
+      const chainR = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.55, 6), chainMat);
+      chainR.position.set(0.07, -0.27, 0);
+      pivotGroup.add(chainR);
+
+      const seat = new THREE.Mesh(
+        new THREE.BoxGeometry(0.18, 0.03, 0.12),
+        new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.5 })
+      );
+      seat.position.set(0, -0.55, 0);
+      pivotGroup.add(seat);
+
+      swingFrameGroup.add(pivotGroup);
+      swingSeats.push(pivotGroup);
+    });
+
+    playgroundGroup.add(swingFrameGroup);
+
+    // 4) Rocking Seesaw / Teeter-Totter (South-East of Playground)
+    const seesawGroup = new THREE.Group();
+    seesawGroup.position.set(0.35, 0.06, 0.65);
+
+    const fulcrum = new THREE.Mesh(
+      new THREE.ConeGeometry(0.12, 0.2, 4),
+      new THREE.MeshStandardMaterial({ color: 0xa855f7, roughness: 0.5 })
+    );
+    fulcrum.position.y = 0.1;
+    seesawGroup.add(fulcrum);
+
+    const seesawPlank = new THREE.Group();
+    seesawPlank.position.y = 0.2;
+    const plankMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(0.78, 0.035, 0.16),
+      new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.4 })
+    );
+    seesawPlank.add(plankMesh);
+    seesawGroup.add(seesawPlank);
+    playgroundGroup.add(seesawGroup);
+
+    // Raycast Hit Box for Playground Inspection
+    const playgroundHitBox = new THREE.Mesh(
+      new THREE.BoxGeometry(3.2, 1.8, 3.2),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
+    playgroundHitBox.position.y = 0.8;
+    (playgroundHitBox as any).userData = { type: 'playground' };
+    playgroundGroup.add(playgroundHitBox);
+    interactives.push(playgroundHitBox);
+
+    landscapeGroup.add(playgroundGroup);
 
     // Street Lanterns with glowing globes and light sources
     const streetLanterns: THREE.PointLight[] = [];
@@ -302,7 +584,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       const poleGroup = new THREE.Group();
       poleGroup.position.set(lp.x, 0.35, lp.z);
 
-      // Post
       const pole = new THREE.Mesh(
         new THREE.CylinderGeometry(0.04, 0.05, 1.2, 8),
         new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8, roughness: 0.3 })
@@ -310,7 +591,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       pole.position.y = 0.6;
       poleGroup.add(pole);
 
-      // Glowing Glass Lantern
       const lampGlass = new THREE.Mesh(
         new THREE.SphereGeometry(0.12, 8, 8),
         new THREE.MeshBasicMaterial({ color: timeOfDay === 'night' ? 0xfff3a1 : 0xfffae0 })
@@ -318,7 +598,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       lampGlass.position.y = 1.25;
       poleGroup.add(lampGlass);
 
-      // Point Light
       const pLight = new THREE.PointLight(
         0xffb703,
         timeOfDay === 'night' ? 1.8 : timeOfDay === 'twilight' ? 1.2 : 0.4,
@@ -353,7 +632,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       const level = landmark.currentLevel;
       const isMax = level >= landmark.maxLevel;
 
-      // Base Foundation Stone
       const baseGeo = new THREE.BoxGeometry(1.6, 0.25, 1.6);
       const baseMat = new THREE.MeshStandardMaterial({
         color: 0x1e293b,
@@ -364,18 +642,15 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       baseMesh.receiveShadow = true;
       lmGroup.add(baseMesh);
 
-      // Construct distinct architectural geometries per landmark type
       if (landmark.icon === 'Sparkles') {
-        // TOWN HALL & CLOCKTOWER (Grand Civic Center)
         const hallBase = new THREE.Mesh(
           new THREE.BoxGeometry(1.4, 0.9, 1.2),
-          new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.6 }) // Crimson brick
+          new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.6 })
         );
         hallBase.position.y = 0.55;
         hallBase.castShadow = true;
         lmGroup.add(hallBase);
 
-        // Columns
         for (let c = -0.5; c <= 0.5; c += 0.5) {
           const col = new THREE.Mesh(
             new THREE.CylinderGeometry(0.06, 0.07, 0.85, 8),
@@ -385,7 +660,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
           lmGroup.add(col);
         }
 
-        // Triangular Pediment
         const pediment = new THREE.Mesh(
           new THREE.ConeGeometry(0.9, 0.35, 4),
           new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.4 })
@@ -394,7 +668,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         pediment.position.set(0, 1.15, 0.4);
         lmGroup.add(pediment);
 
-        // Clocktower Spire
         const tower = new THREE.Mesh(
           new THREE.BoxGeometry(0.6, 1.4, 0.6),
           new THREE.MeshStandardMaterial({ color: 0x7f1d1d, roughness: 0.5 })
@@ -403,14 +676,12 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         tower.castShadow = true;
         lmGroup.add(tower);
 
-        // Glowing Clock Face
         const clockGeo = new THREE.CircleGeometry(0.2, 16);
         const clockMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
         const clock = new THREE.Mesh(clockGeo, clockMat);
         clock.position.set(0, 1.8, 0.22);
         lmGroup.add(clock);
 
-        // Clock Hands
         const handGeo = new THREE.BoxGeometry(0.03, 0.14, 0.01);
         const handMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
         const hand = new THREE.Mesh(handGeo, handMat);
@@ -418,7 +689,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         lmGroup.add(hand);
         townHallClockHand = hand;
 
-        // Golden Spire Roof
         const spire = new THREE.Mesh(
           new THREE.ConeGeometry(0.42, 0.8, 4),
           new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.8, roughness: 0.2 })
@@ -429,7 +699,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         lmGroup.add(spire);
 
       } else if (landmark.icon === 'Utensils') {
-        // STAR WINDMILL (Windmill & Millhouse)
         const towerGeo = new THREE.CylinderGeometry(0.55, 0.75, 1.6, 16);
         const towerMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.7 });
         const millTower = new THREE.Mesh(towerGeo, towerMat);
@@ -437,7 +706,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         millTower.castShadow = true;
         lmGroup.add(millTower);
 
-        // Conical Roof
         const roof = new THREE.Mesh(
           new THREE.ConeGeometry(0.7, 0.7, 16),
           new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.6 })
@@ -446,7 +714,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         roof.castShadow = true;
         lmGroup.add(roof);
 
-        // Windmill Sails Hub & Blades
         const sailsHub = new THREE.Group();
         sailsHub.position.set(0, 1.65, 0.65);
 
@@ -456,7 +723,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         );
         sailsHub.add(hubMesh);
 
-        // 4 Sails
         for (let i = 0; i < 4; i++) {
           const bladeGroup = new THREE.Group();
           bladeGroup.rotation.z = (i * Math.PI) / 2;
@@ -482,7 +748,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         animatedWindmillSails = sailsHub;
 
       } else if (landmark.icon === 'Droplets') {
-        // LIQUID PRISM FOUNTAIN
         const basin = new THREE.Mesh(
           new THREE.CylinderGeometry(0.9, 1.0, 0.4, 24),
           new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3, metalness: 0.4 })
@@ -491,7 +756,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         basin.castShadow = true;
         lmGroup.add(basin);
 
-        // Water surface disc
         const waterDisc = new THREE.Mesh(
           new THREE.CircleGeometry(0.85, 24),
           new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.85 })
@@ -500,7 +764,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         waterDisc.position.y = 0.48;
         lmGroup.add(waterDisc);
 
-        // Tier 2 Basin
         const tier2 = new THREE.Mesh(
           new THREE.CylinderGeometry(0.45, 0.55, 0.3, 16),
           new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.4 })
@@ -508,7 +771,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         tier2.position.y = 0.7;
         lmGroup.add(tier2);
 
-        // Fountain Spire
         const fSpire = new THREE.Mesh(
           new THREE.ConeGeometry(0.18, 0.6, 8),
           new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.6 })
@@ -516,7 +778,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         fSpire.position.y = 1.1;
         lmGroup.add(fSpire);
 
-        // Animated Water Particles Spray
         const pCount = 30;
         const pGeo = new THREE.BufferGeometry();
         const pPos = new Float32Array(pCount * 3);
@@ -537,7 +798,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         fountainWaterParticles = waterParticles;
 
       } else if (landmark.icon === 'Home') {
-        // MASCOT GUILDHOUSE & BAKERY
         const cottage = new THREE.Mesh(
           new THREE.BoxGeometry(1.3, 0.8, 1.1),
           new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.6 })
@@ -546,7 +806,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         cottage.castShadow = true;
         lmGroup.add(cottage);
 
-        // Peaked Gable Roof
         const roof = new THREE.Mesh(
           new THREE.ConeGeometry(1.0, 0.7, 4),
           new THREE.MeshStandardMaterial({ color: 0xb91c1c, roughness: 0.5 })
@@ -556,7 +815,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         roof.castShadow = true;
         lmGroup.add(roof);
 
-        // Striped Awning
         const awning = new THREE.Mesh(
           new THREE.BoxGeometry(0.9, 0.08, 0.4),
           new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.4 })
@@ -565,7 +823,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         awning.position.set(0, 0.65, 0.65);
         lmGroup.add(awning);
 
-        // Chimney
         const chimney = new THREE.Mesh(
           new THREE.BoxGeometry(0.22, 0.6, 0.22),
           new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 })
@@ -573,7 +830,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         chimney.position.set(0.4, 1.35, -0.2);
         lmGroup.add(chimney);
 
-        // Chimney Smoke Particles
         const sCount = 12;
         const sGeo = new THREE.BufferGeometry();
         const sPos = new Float32Array(sCount * 3);
@@ -594,7 +850,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         bakerySmokeParticles = smoke;
 
       } else if (landmark.icon === 'Gamepad2') {
-        // NEON ARCADE & HOLO ARENA
         const arcadeBody = new THREE.Mesh(
           new THREE.BoxGeometry(1.2, 1.2, 1.2),
           new THREE.MeshStandardMaterial({ color: 0x6b21a8, roughness: 0.3, metalness: 0.5 })
@@ -603,7 +858,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         arcadeBody.castShadow = true;
         lmGroup.add(arcadeBody);
 
-        // Glowing Neon Trim Lines
         const neonTrim = new THREE.Mesh(
           new THREE.BoxGeometry(1.25, 0.08, 1.25),
           new THREE.MeshBasicMaterial({ color: 0xc084fc })
@@ -611,7 +865,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         neonTrim.position.y = 1.25;
         lmGroup.add(neonTrim);
 
-        // Floating Holographic Dice on Roof
         const diceGeo = new THREE.BoxGeometry(0.35, 0.35, 0.35);
         const diceMat = new THREE.MeshStandardMaterial({
           color: 0x00f0ff,
@@ -626,7 +879,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         arcadeHoloDice = holoDice;
 
       } else if (landmark.icon === 'Radio') {
-        // DRIVE-IN CINEMA & BROADCAST TOWER
         const screen = new THREE.Mesh(
           new THREE.BoxGeometry(1.3, 0.8, 0.12),
           new THREE.MeshStandardMaterial({ color: 0x047857, roughness: 0.3 })
@@ -635,7 +887,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         screen.castShadow = true;
         lmGroup.add(screen);
 
-        // Screen Glow Face
         const glowFace = new THREE.Mesh(
           new THREE.PlaneGeometry(1.15, 0.65),
           new THREE.MeshBasicMaterial({ color: 0x34d399 })
@@ -643,7 +894,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         glowFace.position.set(0, 0.8, 0.08);
         lmGroup.add(glowFace);
 
-        // Radio Mast
         const mast = new THREE.Mesh(
           new THREE.CylinderGeometry(0.04, 0.06, 1.5, 8),
           new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8 })
@@ -651,7 +901,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         mast.position.set(0.5, 1.4, -0.2);
         lmGroup.add(mast);
 
-        // Satellite Dish
         const dish = new THREE.Mesh(
           new THREE.SphereGeometry(0.24, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2),
           new THREE.MeshStandardMaterial({ color: 0x10b981, metalness: 0.7 })
@@ -662,7 +911,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         radioDish = dish;
 
       } else {
-        // MUSIC / SOUND STAGE or GENERIC LANDMARK
         const stage = new THREE.Mesh(
           new THREE.CylinderGeometry(0.75, 0.85, 0.5, 16),
           new THREE.MeshStandardMaterial({ color: 0xec4899, roughness: 0.4 })
@@ -679,7 +927,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         lmGroup.add(totem);
       }
 
-      // Masterwork Crown / Star if Max Level
       if (isMax) {
         const crown = new THREE.Mesh(
           new THREE.TorusGeometry(0.4, 0.05, 8, 24),
@@ -690,7 +937,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
         lmGroup.add(crown);
       }
 
-      // Invisible Raycast Hit Box for touch / mouse selection
       const hitBox = new THREE.Mesh(
         new THREE.BoxGeometry(2.0, 3.2, 2.0),
         new THREE.MeshBasicMaterial({ visible: false })
@@ -710,7 +956,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
     for (let m = 0; m < 4; m++) {
       const mGroup = new THREE.Group();
 
-      // Cute Mascot Round Body
       const body = new THREE.Mesh(
         new THREE.SphereGeometry(0.24, 16, 16),
         new THREE.MeshStandardMaterial({ color: mascotColors[m], roughness: 0.5 })
@@ -719,7 +964,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       body.castShadow = true;
       mGroup.add(body);
 
-      // Cute Ears
       const ear1 = new THREE.Mesh(
         new THREE.ConeGeometry(0.08, 0.16, 8),
         new THREE.MeshStandardMaterial({ color: mascotColors[m] })
@@ -736,7 +980,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       ear2.rotation.z = -0.3;
       mGroup.add(ear2);
 
-      // Cute Eyes
       const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
       const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), eyeMat);
       eye1.position.set(-0.08, 0.38, 0.2);
@@ -758,7 +1001,7 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       });
     }
 
-    // 7. SELECTION RING AROUND CLICKED LANDMARK
+    // 7. SELECTION RING AROUND CLICKED LANDMARK OR PLAYGROUND
     const ringGeo = new THREE.RingGeometry(1.2, 1.35, 32);
     const ringMat = new THREE.MeshBasicMaterial({
       color: 0x00f0ff,
@@ -783,6 +1026,10 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       wanderingMascots: wanderingMascots,
       streetLanterns: streetLanterns,
       townHallClockHand: townHallClockHand,
+      treeCrowns: treeCrowns,
+      merryGoRound: carouselGroup,
+      swingSeats: swingSeats,
+      seesawPlank: seesawPlank,
     };
 
     // 8. INTERACTIVE DRAG & ORBIT CONTROLS
@@ -812,7 +1059,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
     const onPointerUp = (e: PointerEvent) => {
       stateRef.current.dragStart = null;
 
-      // Click / Tap detection for raycasting
       if (!didDrag) {
         const rect = domElement.getBoundingClientRect();
         stateRef.current.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -825,16 +1071,23 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
           const hit = intersects[0].object;
           const uData = (hit as any).userData;
           if (uData && uData.type === 'landmark') {
+            setIsPlaygroundSelected(false);
             setSelectedLandmark(uData.landmark);
             SoundEngine.playTileStep();
-            // Position selection ring
             const pos = LANDMARK_OFFSETS[uData.landmark.icon] || { x: 0, z: 0 };
             selRing.position.set(pos.x, 0.45, pos.z);
             (selRing.material as THREE.MeshBasicMaterial).opacity = 0.9;
+          } else if (uData && uData.type === 'playground') {
+            setSelectedLandmark(null);
+            setIsPlaygroundSelected(true);
+            stateRef.current.playgroundSpinBoost = 1.0;
+            SoundEngine.playMascotSqueak('giggle');
+            selRing.position.set(0, 0.45, 4.35);
+            (selRing.material as THREE.MeshBasicMaterial).opacity = 0.9;
           }
         } else {
-          // Tap background to dismiss selection
           setSelectedLandmark(null);
+          setIsPlaygroundSelected(false);
           (selRing.material as THREE.MeshBasicMaterial).opacity = 0;
         }
       }
@@ -851,12 +1104,10 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       const elapsed = stateRef.current.clock.getElapsedTime();
       const s = stateRef.current;
 
-      // Auto rotation
       if (isAutoRotate && !s.dragStart) {
-        s.orbit.theta += 0.0035;
+        s.orbit.theta += 0.0032;
       }
 
-      // Camera position from spherical coordinates
       const { theta, phi, radius, target } = s.orbit;
       camera.position.x = target.x + radius * Math.sin(theta) * Math.cos(phi);
       camera.position.y = target.y + radius * Math.sin(phi);
@@ -866,6 +1117,35 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       // Windmill Sails Continuous Rotation
       if (s.animatedProps.windmillSails) {
         s.animatedProps.windmillSails.rotation.z += 0.025;
+      }
+
+      // Organic Tree Canopy Gentle Breeze Sway
+      if (s.animatedProps.treeCrowns) {
+        s.animatedProps.treeCrowns.forEach((tc) => {
+          tc.group.rotation.z = Math.sin(elapsed * 1.8 + tc.phase) * 0.035;
+          tc.group.rotation.x = Math.cos(elapsed * 1.4 + tc.phase) * 0.025;
+        });
+      }
+
+      // Playground Merry-Go-Round Carousel Spin
+      if (s.playgroundSpinBoost > 0) {
+        s.playgroundSpinBoost = Math.max(0, s.playgroundSpinBoost - 0.012);
+      }
+      if (s.animatedProps.merryGoRound) {
+        s.animatedProps.merryGoRound.rotation.y += 0.035 + s.playgroundSpinBoost * 0.14;
+      }
+
+      // Playground Swings Rhythmic Pendulum Motion
+      if (s.animatedProps.swingSeats) {
+        const swingSpeed = 2.8 + s.playgroundSpinBoost * 2.0;
+        s.animatedProps.swingSeats.forEach((seat, idx) => {
+          seat.rotation.x = Math.sin(elapsed * swingSpeed + idx * Math.PI) * 0.42;
+        });
+      }
+
+      // Playground Seesaw Rocking Motion
+      if (s.animatedProps.seesawPlank) {
+        s.animatedProps.seesawPlank.rotation.z = Math.sin(elapsed * 2.2) * 0.24;
       }
 
       // Town Hall Clock Hand Rotation
@@ -921,12 +1201,10 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       if (s.animatedProps.wanderingMascots) {
         s.animatedProps.wanderingMascots.forEach((wm) => {
           wm.angle += 0.006 * wm.speed;
-          const r = 2.1;
+          const r = 2.05;
           wm.group.position.x = Math.sin(wm.angle) * r;
           wm.group.position.z = Math.cos(wm.angle) * r;
-          // Hop bounce
           wm.group.position.y = 0.38 + Math.abs(Math.sin(elapsed * 6 * wm.speed)) * 0.12;
-          // Face tangent direction of motion
           wm.group.rotation.y = wm.angle + Math.PI / 2;
         });
       }
@@ -994,13 +1272,21 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
 
     SoundEngine.playUpgradeFanfare();
     confetti({ particleCount: 50, spread: 70, origin: { y: 0.6 } });
-    onUpgradeLandmark(selectedLandmark.id, cost);
+    if (onUpgradeLandmark) {
+      onUpgradeLandmark(selectedLandmark.id, cost);
+    }
 
-    // Update selected landmark local reference
     setSelectedLandmark((prev) => {
       if (!prev) return null;
       return { ...prev, currentLevel: prev.currentLevel + 1 };
     });
+  };
+
+  const handleBoostPlayground = () => {
+    stateRef.current.playgroundSpinBoost = 1.5;
+    setPlaygroundBoostCount((c) => c + 1);
+    SoundEngine.playMascotSqueak('giggle');
+    confetti({ particleCount: 35, spread: 55, origin: { y: 0.65 } });
   };
 
   const currentCost = selectedLandmark ? selectedLandmark.costPerLevel[selectedLandmark.currentLevel] || 0 : 0;
@@ -1016,7 +1302,7 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       />
 
       {/* Top Floating Controls Bar */}
-      <div className="absolute top-2.5 inset-x-3 flex items-center justify-between pointer-events-none z-10">
+      <div className="absolute top-2.5 inset-x-3 flex items-center justify-between pointer-events-none z-10 flex-wrap gap-1.5">
         {/* Title Badge */}
         <div className="flex items-center gap-2 pointer-events-auto bg-slate-950/85 px-3 py-1.5 rounded-2xl border border-slate-800 backdrop-blur-md shadow-lg">
           <span className="text-base animate-bounce">🏰</span>
@@ -1027,7 +1313,7 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
                 W{town.worldNumber}
               </span>
             </div>
-            <div className="text-[8.5px] text-slate-400">Full 360° Architectural Environment</div>
+            <div className="text-[8.5px] text-slate-400">Lush Grove & Fun Playground</div>
           </div>
         </div>
 
@@ -1068,6 +1354,20 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
               Plaza
             </button>
             <button
+              onClick={() => {
+                setCameraViewPreset('playground');
+                setIsPlaygroundSelected(true);
+                setSelectedLandmark(null);
+              }}
+              className={`px-2 py-0.5 rounded-lg text-[8.5px] font-black uppercase transition-all cursor-pointer ${
+                cameraViewPreset === 'playground'
+                  ? 'bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950'
+                  : 'text-emerald-300 hover:text-white'
+              }`}
+            >
+              🎠 Playground
+            </button>
+            <button
               onClick={() => setCameraViewPreset('windmill')}
               className={`px-2 py-0.5 rounded-lg text-[8.5px] font-black uppercase transition-all cursor-pointer ${
                 cameraViewPreset === 'windmill'
@@ -1093,13 +1393,52 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
       </div>
 
       {/* Orbit Tip Overlay */}
-      {!selectedLandmark && (
+      {!selectedLandmark && !isPlaygroundSelected && (
         <div className="absolute bottom-2.5 left-3 pointer-events-none">
           <span className="text-[8.5px] font-black text-slate-300 bg-slate-950/85 px-3 py-1.5 rounded-xl border border-slate-800 uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5">
-            <span>🖱️ Drag to orbit 360°</span>
+            <span>🌳 Realistic Trees & Playground</span>
             <span className="text-slate-500">•</span>
-            <span>Tap any building to inspect & upgrade</span>
+            <span>Tap any building or playground</span>
           </span>
+        </div>
+      )}
+
+      {/* 3D Playground Inspector Drawer */}
+      {isPlaygroundSelected && !selectedLandmark && (
+        <div className="absolute bottom-2.5 inset-x-2.5 p-3 rounded-2xl bg-slate-950/95 border-2 border-emerald-500/60 shadow-2xl backdrop-blur-md z-20 flex flex-col gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="w-8 h-8 rounded-xl bg-emerald-950/80 border border-emerald-400/50 flex items-center justify-center text-lg shadow-md">
+                🎠
+              </span>
+              <div>
+                <h4 className="text-xs font-black text-white leading-tight flex items-center gap-1.5">
+                  <span>Sunshine Mascot Playground</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-400 text-slate-950 font-black text-[7.5px] uppercase">
+                    Interactive Park
+                  </span>
+                </h4>
+                <div className="text-[9px] text-slate-300">
+                  Spinning Carousel, Rainbow Slide, Dual Swing Set & Seesaw • Cheer Spin x{playgroundBoostCount}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsPlaygroundSelected(false)}
+              className="p-1.5 rounded-xl bg-slate-900 text-slate-400 hover:text-white border border-slate-800 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <button
+            onClick={handleBoostPlayground}
+            className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md hover:brightness-110 active:scale-98 transition-all cursor-pointer"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Spin Merry-Go-Round & Swings Faster! 🎠✨</span>
+          </button>
         </div>
       )}
 

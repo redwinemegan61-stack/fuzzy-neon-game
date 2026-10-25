@@ -306,11 +306,67 @@ export const TownView: React.FC<TownViewProps> = React.memo(({
             </svg>
           </div>
 
-          {/* Decorative Town Trees & Glowing Lanterns */}
-          <div className="absolute top-3 left-4 text-lg filter drop-shadow opacity-90 animate-pulse">🌳</div>
-          <div className="absolute top-6 right-6 text-lg filter drop-shadow opacity-90">🌲</div>
-          <div className="absolute bottom-4 left-6 text-lg filter drop-shadow opacity-90">🌸</div>
-          <div className="absolute bottom-5 right-6 text-lg filter drop-shadow opacity-90">✨</div>
+          {/* Realistic Multi-Layered Town Trees & Glowing Lanterns */}
+          {/* Top-Left Ancient Oak Tree */}
+          <div className="absolute top-2 left-3 z-10 pointer-events-none drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
+            <svg width="36" height="40" viewBox="0 0 36 40">
+              <ellipse cx="18" cy="36" rx="10" ry="3" fill="rgba(0,0,0,0.45)" />
+              <path d="M15 36 L16 22 L11 16 M21 36 L20 22 L25 17" stroke="#5c3a21" strokeWidth="3" strokeLinecap="round" fill="none" />
+              <rect x="16" y="21" width="4" height="15" rx="1.5" fill="#7c4d2b" />
+              <circle cx="11" cy="17" r="7" fill="#15803d" />
+              <circle cx="25" cy="17" r="7" fill="#166534" />
+              <circle cx="18" cy="11" r="8.5" fill="#22c55e" />
+              <circle cx="15" cy="14" r="6" fill="#4ade80" opacity="0.85" />
+            </svg>
+          </div>
+
+          {/* Top-Right Alpine Pine & Sakura Grove */}
+          <div className="absolute top-2 right-3 z-10 pointer-events-none drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
+            <svg width="40" height="42" viewBox="0 0 40 42">
+              <ellipse cx="20" cy="38" rx="12" ry="3" fill="rgba(0,0,0,0.45)" />
+              <rect x="12" y="26" width="3.5" height="12" rx="1" fill="#5c3a21" />
+              <polygon points="13.7,8 5,22 22.5,22" fill="#065f46" />
+              <polygon points="13.7,14 4,28 23.5,28" fill="#047857" />
+              <polygon points="13.7,5 7,16 20.5,16" fill="#10b981" />
+              <rect x="26" y="25" width="3.5" height="13" rx="1" fill="#6b4226" />
+              <circle cx="27.5" cy="18" r="7.5" fill="#ec4899" />
+              <circle cx="24" cy="15" r="5.5" fill="#f472b6" />
+              <circle cx="31" cy="15" r="5" fill="#fbcfe8" />
+            </svg>
+          </div>
+
+          {/* Bottom-Left Cherry Blossom Tree */}
+          <div className="absolute bottom-2 left-3 z-10 pointer-events-none drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)]">
+            <svg width="34" height="36" viewBox="0 0 34 36">
+              <ellipse cx="17" cy="33" rx="9" ry="2.5" fill="rgba(0,0,0,0.4)" />
+              <path d="M15 33 Q17 24 12 18 M19 33 Q17 24 23 18" stroke="#5c3a21" strokeWidth="2.8" strokeLinecap="round" fill="none" />
+              <circle cx="11" cy="16" r="6.5" fill="#db2777" />
+              <circle cx="23" cy="16" r="6.5" fill="#ec4899" />
+              <circle cx="17" cy="11" r="7.5" fill="#f472b6" />
+              <circle cx="16" cy="9" r="4.5" fill="#fbcfe8" />
+            </svg>
+          </div>
+
+          {/* Interactive Fun Playground Park (Bottom Center) */}
+          <motion.div
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              SoundEngine.playMascotSqueak('giggle');
+              confetti({ particleCount: 25, spread: 50, origin: { y: 0.65 } });
+            }}
+            className="absolute bottom-2.5 left-1/2 -translate-x-1/2 z-20 cursor-pointer group flex flex-col items-center"
+            title="Town Fun Playground! Tap to spin the carousel & play!"
+          >
+            <div className="px-2.5 py-1 rounded-2xl bg-gradient-to-r from-amber-500/30 via-pink-500/30 to-cyan-500/30 border border-amber-300/60 backdrop-blur-md shadow-[0_0_15px_rgba(251,191,36,0.35)] flex items-center gap-1.5">
+              <span className="text-sm animate-spin" style={{ animationDuration: '5s' }}>🎠</span>
+              <span className="text-xs animate-bounce">🛝</span>
+              <span className="text-[9px] font-black text-amber-200 uppercase tracking-wider">
+                Playground
+              </span>
+            </div>
+          </motion.div>
+
           <div className="absolute top-1/2 left-4 text-xs filter drop-shadow">🏮</div>
           <div className="absolute top-1/2 right-4 text-xs filter drop-shadow">🏮</div>
 
