@@ -124,10 +124,30 @@ export const AdStationModal: React.FC<AdStationModalProps> = ({
     boost: 3,
   });
 
-  // Initialize & preload Google AdMob SDK when modal opens
+  const [adError, setAdError] = useState<string | null>(null);
+
+  // Initialize & preload Google AdMob SDK when modal opens with clean lifecycle and error handling
   useEffect(() => {
     if (!isOpen) return;
-    initializeAndPreload();
+    let isMounted = true;
+
+    const initAds = async () => {
+      try {
+        setAdError(null);
+        await initializeAndPreload();
+      } catch (err: any) {
+        if (isMounted) {
+          console.warn('AdMob SDK initialization warning:', err?.message || err);
+          setAdError('Ad network offline or blocked. Interactive H5 cinema fallback ready.');
+        }
+      }
+    };
+
+    initAds();
+
+    return () => {
+      isMounted = false;
+    };
   }, [isOpen, initializeAndPreload]);
 
   const grantRewardByType = (type: 'dice' | 'coins' | 'boost' | 'mega') => {
@@ -165,31 +185,48 @@ export const AdStationModal: React.FC<AdStationModalProps> = ({
     }
   };
 
-  // Start watching rewarded ad via AdMob SDK (Native Capacitor / GPT Out-Of-Page / H5 Player)
+  // Start watching rewarded ad via AdMob SDK with robust error handling
   const handleStartAd = async (type: 'dice' | 'coins' | 'boost' | 'mega') => {
-    setSelectedRewardType(type);
-    setSdkStatus('showing_ad');
-    SoundEngine.playBoardHop();
+    try {
+      setSelectedRewardType(type);
+      setSdkStatus('showing_ad');
+      setAdError(null);
+      SoundEngine.playBoardHop();
 
-    const { handledExternally, result } = await showRewardedAd(
-      type,
-      injectedRewardedAdUnitId
-    );
+      let handledExternally = false;
+      let result: any = null;
 
-    if (handledExternally && result?.rewarded) {
-      setSdkStatus('reward_earned');
-      grantRewardByType(type);
-      onClose();
-      return;
+      try {
+        const res = await showRewardedAd(type, injectedRewardedAdUnitId);
+        handledExternally = res.handledExternally;
+        result = res.result;
+      } catch (err) {
+        console.warn('showRewardedAd caught error, using H5 fallback:', err);
+      }
+
+      if (handledExternally && result?.rewarded) {
+        setSdkStatus('reward_earned');
+        grantRewardByType(type);
+        onClose();
+        return;
+      }
+
+      // H5 Rewarded Ad Player presentation with AdMob slot telemetry
+      const randomAd = AD_CREATIVES[Math.floor(Math.random() * AD_CREATIVES.length)];
+      setCurrentCreative(randomAd);
+      setCountdown(5);
+      setCanSkip(false);
+      setTappedBubbleCount(0);
+      setIsPlayingAd(true);
+    } catch (err: any) {
+      console.error('Error starting rewarded ad:', err);
+      setAdError('Ad fetch failed. Enjoying free reward fallback!');
+      const randomAd = AD_CREATIVES[Math.floor(Math.random() * AD_CREATIVES.length)];
+      setCurrentCreative(randomAd);
+      setCountdown(2);
+      setCanSkip(true);
+      setIsPlayingAd(true);
     }
-
-    // H5 Rewarded Ad Player presentation with AdMob slot telemetry
-    const randomAd = AD_CREATIVES[Math.floor(Math.random() * AD_CREATIVES.length)];
-    setCurrentCreative(randomAd);
-    setCountdown(5);
-    setCanSkip(false);
-    setTappedBubbleCount(0);
-    setIsPlayingAd(true);
   };
 
   // 5-second countdown timer for H5 Rewarded Ad playback
@@ -261,6 +298,22 @@ export const AdStationModal: React.FC<AdStationModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Ad Error / Fallback Notice Banner if ad fetch fails */}
+        {adError && (
+          <div className="mb-2 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-[10px] text-amber-300 flex items-center justify-between z-10">
+            <span>⚠️ {adError}</span>
+            <button
+              onClick={() => {
+                setAdError(null);
+                initializeAndPreload();
+              }}
+              className="underline font-bold hover:text-amber-200 cursor-pointer"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* Google AdMob SDK Configuration & Status Strip */}
         <div className="mb-3 px-3 py-2 rounded-2xl bg-slate-900/95 border border-slate-800 flex flex-col gap-1 z-10">

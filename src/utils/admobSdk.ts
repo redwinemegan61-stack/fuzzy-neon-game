@@ -117,6 +117,7 @@ class GoogleAdMobWebH5Manager {
 
   /**
    * Injects AdMob App ID meta tags, Google Publisher Tag (gpt.js), and H5 Ad Placement scripts.
+   * Ensures ad scripts are loaded only once per session with robust error handling.
    */
   public async initialize(customConfig?: Partial<AdMobConfig>): Promise<AdMobConfig> {
     this.config = {
@@ -125,57 +126,95 @@ class GoogleAdMobWebH5Manager {
     };
 
     if (typeof document !== 'undefined') {
-      // 1. Inject AdMob App ID & AdSense meta tags into <head>
-      this.upsertMetaTag('google-adsense-account', this.config.publisherId);
-      this.upsertMetaTag('admob-app-id', this.config.appId);
-      this.upsertMetaTag('admob-rewarded-ad-unit-id', this.config.rewardedAdUnitId);
-
-      // 2. Inject Google Publisher Tag (GPT) script for Web/H5 Rewarded Ads
-      if (!document.getElementById('google-gpt-sdk-script')) {
-        const gptScript = document.createElement('script');
-        gptScript.id = 'google-gpt-sdk-script';
-        gptScript.src = 'https://securepubads.g.doubleclick.net/tag/js/gpt.js';
-        gptScript.async = true;
-        gptScript.crossOrigin = 'anonymous';
-        document.head.appendChild(gptScript);
-      }
-
-      // 3. Inject Google H5 Games Ad Placement API (adsbygoogle.js)
-      if (!document.getElementById('google-h5-adbreak-script')) {
-        const h5Script = document.createElement('script');
-        h5Script.id = 'google-h5-adbreak-script';
-        h5Script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${this.config.publisherId}`;
-        h5Script.async = true;
-        h5Script.crossOrigin = 'anonymous';
-        if (this.config.isTestMode) {
-          h5Script.setAttribute('data-adbreak-test', 'on');
-        }
-        document.head.appendChild(h5Script);
-      }
-
-      // Initialize window.adsbygoogle and window.adBreak / window.adConfig shims
-      window.adsbygoogle = window.adsbygoogle || [];
-      if (!window.adBreak) {
-        window.adBreak = function (o: any) {
-          window.adsbygoogle?.push(o);
-        };
-      }
-      if (!window.adConfig) {
-        window.adConfig = function (o: any) {
-          window.adsbygoogle?.push(o);
-        };
-      }
-
       try {
-        window.adConfig({
-          preloadAdBreaks: 'on',
-          sound: 'on',
-          onReady: () => {
-            // H5 Games Ad Placement ready
-          },
-        });
-      } catch {
-        // Ignore if blocked by browser extension
+        // 1. Inject AdMob App ID & AdSense meta tags into <head>
+        this.upsertMetaTag('google-adsense-account', this.config.publisherId);
+        this.upsertMetaTag('admob-app-id', this.config.appId);
+        this.upsertMetaTag('admob-rewarded-ad-unit-id', this.config.rewardedAdUnitId);
+
+        // 2. Ensure ad scripts are loaded only once per session
+        const sessionLoadedKey = 'admob_scripts_loaded_session';
+        const alreadyLoadedInSession =
+          typeof sessionStorage !== 'undefined' &&
+          sessionStorage.getItem(sessionLoadedKey) === 'true';
+
+        if (!alreadyLoadedInSession) {
+          // Inject Google Publisher Tag (GPT) script for Web/H5 Rewarded Ads
+          if (!document.getElementById('google-gpt-sdk-script')) {
+            try {
+              const gptScript = document.createElement('script');
+              gptScript.id = 'google-gpt-sdk-script';
+              gptScript.src = 'https://securepubads.g.doubleclick.net/tag/js/gpt.js';
+              gptScript.async = true;
+              gptScript.crossOrigin = 'anonymous';
+              gptScript.onerror = (e) => {
+                console.warn('GPT SDK script failed to load (possibly blocked by adblocker):', e);
+              };
+              document.head.appendChild(gptScript);
+            } catch (err) {
+              console.warn('Error appending GPT script:', err);
+            }
+          }
+
+          // Inject Google H5 Games Ad Placement API (adsbygoogle.js)
+          if (!document.getElementById('google-h5-adbreak-script')) {
+            try {
+              const h5Script = document.createElement('script');
+              h5Script.id = 'google-h5-adbreak-script';
+              h5Script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${this.config.publisherId}`;
+              h5Script.async = true;
+              h5Script.crossOrigin = 'anonymous';
+              if (this.config.isTestMode) {
+                h5Script.setAttribute('data-adbreak-test', 'on');
+              }
+              h5Script.onerror = (e) => {
+                console.warn('AdSense H5 script failed to load (possibly blocked by adblocker):', e);
+              };
+              document.head.appendChild(h5Script);
+            } catch (err) {
+              console.warn('Error appending AdSense H5 script:', err);
+            }
+          }
+
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem(sessionLoadedKey, 'true');
+          }
+        }
+
+        // Initialize window.adsbygoogle and window.adBreak / window.adConfig shims
+        window.adsbygoogle = window.adsbygoogle || [];
+        if (!window.adBreak) {
+          window.adBreak = function (o: any) {
+            try {
+              window.adsbygoogle?.push(o);
+            } catch (err) {
+              console.warn('adBreak push error:', err);
+            }
+          };
+        }
+        if (!window.adConfig) {
+          window.adConfig = function (o: any) {
+            try {
+              window.adsbygoogle?.push(o);
+            } catch (err) {
+              console.warn('adConfig push error:', err);
+            }
+          };
+        }
+
+        try {
+          window.adConfig({
+            preloadAdBreaks: 'on',
+            sound: 'on',
+            onReady: () => {
+              // H5 Games Ad Placement ready
+            },
+          });
+        } catch {
+          // Ignore if blocked by browser extension
+        }
+      } catch (err) {
+        console.warn('Error during script injection in initialize:', err);
       }
     }
 
@@ -185,8 +224,8 @@ class GoogleAdMobWebH5Manager {
         await AdMob.initialize({
           initializeForTesting: this.config.isTestMode,
         });
-      } catch {
-        // Fallback to Web H5 if native bridge is unavailable
+      } catch (err) {
+        console.warn('Native AdMob initialization error:', err);
       }
     }
 
@@ -211,192 +250,208 @@ class GoogleAdMobWebH5Manager {
 
   private upsertMetaTag(name: string, content: string) {
     if (typeof document === 'undefined') return;
-    let meta = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
-    if (!meta) {
-      meta = document.createElement('meta');
-      meta.name = name;
-      document.head.appendChild(meta);
+    try {
+      let meta = document.querySelector(`meta[name="${name}"]`) as HTMLMetaElement | null;
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = name;
+        document.head.appendChild(meta);
+      }
+      meta.content = content;
+    } catch (err) {
+      console.warn(`Error updating meta tag ${name}:`, err);
     }
-    meta.content = content;
   }
 
   /**
    * Preloads a Rewarded Video Ad unit via Capacitor AdMob or Google Publisher Tag (GPT) Out-Of-Page Rewarded slot.
+   * Includes robust error handling to prevent UI crashes if network or ad fetch fails.
    */
   public async preloadRewardedAd(customAdUnitId?: string): Promise<boolean> {
-    if (!this.initialized) {
-      await this.initialize();
-    }
-
-    const adUnitId = customAdUnitId || this.config.rewardedAdUnitId;
-
-    // Native Capacitor AdMob preload
-    if (this.config.platform === 'capacitor-native') {
-      try {
-        const options: RewardAdOptions = {
-          adId: adUnitId,
-          isTesting: this.config.isTestMode,
-        };
-        await AdMob.prepareRewardVideoAd(options);
-        return true;
-      } catch {
-        // Fall through to Web GPT
+    try {
+      if (!this.initialized) {
+        await this.initialize();
       }
-    }
 
-    // Web/H5 Google Publisher Tag (GPT) OutOfPage REWARDED slot preload
-    if (typeof window !== 'undefined') {
-      window.googletag = window.googletag || { cmd: [] };
-      return new Promise<boolean>((resolve) => {
-        let settled = false;
-        const timeoutId = setTimeout(() => {
-          if (!settled) {
-            settled = true;
-            resolve(true); // Resolved for H5 fallback readiness
-          }
-        }, 1200);
+      const adUnitId = customAdUnitId || this.config.rewardedAdUnitId;
 
+      // Native Capacitor AdMob preload
+      if (this.config.platform === 'capacitor-native') {
         try {
-          window.googletag.cmd.push(() => {
-            try {
-              const pubads = window.googletag.pubads();
-              if (this.gptRewardedSlot) {
-                window.googletag.destroySlots([this.gptRewardedSlot]);
-                this.gptRewardedSlot = null;
-                this.gptMakeRewardedVisible = null;
-              }
+          const options: RewardAdOptions = {
+            adId: adUnitId,
+            isTesting: this.config.isTestMode,
+          };
+          await AdMob.prepareRewardVideoAd(options);
+          return true;
+        } catch (err) {
+          console.warn('Capacitor prepareRewardVideoAd error:', err);
+        }
+      }
 
-              const rewardedFormat = window.googletag.enums?.OutOfPageFormat?.REWARDED;
-              if (!rewardedFormat) {
-                if (!settled) {
-                  settled = true;
-                  clearTimeout(timeoutId);
-                  resolve(true);
+      // Web/H5 Google Publisher Tag (GPT) OutOfPage REWARDED slot preload
+      if (typeof window !== 'undefined') {
+        window.googletag = window.googletag || { cmd: [] };
+        return new Promise<boolean>((resolve) => {
+          let settled = false;
+          const timeoutId = setTimeout(() => {
+            if (!settled) {
+              settled = true;
+              resolve(true); // Resolved for H5 fallback readiness
+            }
+          }, 1500);
+
+          try {
+            window.googletag.cmd.push(() => {
+              try {
+                const pubads = window.googletag.pubads();
+                if (this.gptRewardedSlot) {
+                  window.googletag.destroySlots([this.gptRewardedSlot]);
+                  this.gptRewardedSlot = null;
+                  this.gptMakeRewardedVisible = null;
                 }
-                return;
-              }
 
-              const slot = window.googletag.defineOutOfPageSlot(adUnitId, rewardedFormat);
-              if (slot) {
-                this.gptRewardedSlot = slot.addService(pubads);
-
-                pubads.addEventListener('rewardedSlotReady', (event: any) => {
-                  this.gptMakeRewardedVisible = () => event.makeRewardedVisible();
+                const rewardedFormat = window.googletag.enums?.OutOfPageFormat?.REWARDED;
+                if (!rewardedFormat) {
                   if (!settled) {
                     settled = true;
                     clearTimeout(timeoutId);
                     resolve(true);
                   }
-                });
+                  return;
+                }
 
-                pubads.addEventListener('rewardedSlotGranted', (event: any) => {
-                  const payload = event?.payload;
-                  if (this.pendingRewardCallback) {
-                    this.pendingRewardCallback({
-                      rewarded: true,
-                      type: payload?.type || 'coins',
-                      amount: payload?.amount || 1,
-                      adUnitId,
-                      provider: 'gpt-rewarded-web',
-                      transactionId: `gpt-${Date.now()}`,
-                    });
-                    this.pendingRewardCallback = null;
-                  }
-                });
+                const slot = window.googletag.defineOutOfPageSlot(adUnitId, rewardedFormat);
+                if (slot) {
+                  this.gptRewardedSlot = slot.addService(pubads);
 
-                pubads.addEventListener('rewardedSlotClosed', () => {
-                  if (this.gptRewardedSlot) {
-                    window.googletag.destroySlots([this.gptRewardedSlot]);
-                    this.gptRewardedSlot = null;
-                    this.gptMakeRewardedVisible = null;
-                  }
-                });
+                  pubads.addEventListener('rewardedSlotReady', (event: any) => {
+                    this.gptMakeRewardedVisible = () => event.makeRewardedVisible();
+                    if (!settled) {
+                      settled = true;
+                      clearTimeout(timeoutId);
+                      resolve(true);
+                    }
+                  });
 
-                window.googletag.enableServices();
-                window.googletag.display(this.gptRewardedSlot);
-              } else if (!settled) {
-                settled = true;
-                clearTimeout(timeoutId);
-                resolve(true);
+                  pubads.addEventListener('rewardedSlotGranted', (event: any) => {
+                    const payload = event?.payload;
+                    if (this.pendingRewardCallback) {
+                      this.pendingRewardCallback({
+                        rewarded: true,
+                        type: payload?.type || 'coins',
+                        amount: payload?.amount || 1,
+                        adUnitId,
+                        provider: 'gpt-rewarded-web',
+                        transactionId: `gpt-${Date.now()}`,
+                      });
+                      this.pendingRewardCallback = null;
+                    }
+                  });
+
+                  pubads.addEventListener('rewardedSlotClosed', () => {
+                    if (this.gptRewardedSlot) {
+                      window.googletag.destroySlots([this.gptRewardedSlot]);
+                      this.gptRewardedSlot = null;
+                      this.gptMakeRewardedVisible = null;
+                    }
+                  });
+
+                  window.googletag.enableServices();
+                  window.googletag.display(this.gptRewardedSlot);
+                } else if (!settled) {
+                  settled = true;
+                  clearTimeout(timeoutId);
+                  resolve(true);
+                }
+              } catch (err) {
+                console.warn('GPT command execution error during preload:', err);
+                if (!settled) {
+                  settled = true;
+                  clearTimeout(timeoutId);
+                  resolve(true);
+                }
               }
-            } catch {
-              if (!settled) {
-                settled = true;
-                clearTimeout(timeoutId);
-                resolve(true);
-              }
+            });
+          } catch (err) {
+            console.warn('googletag.cmd.push error during preload:', err);
+            if (!settled) {
+              settled = true;
+              clearTimeout(timeoutId);
+              resolve(true);
             }
-          });
-        } catch {
-          if (!settled) {
-            settled = true;
-            clearTimeout(timeoutId);
-            resolve(true);
           }
-        }
-      });
-    }
+        });
+      }
 
-    return true;
+      return true;
+    } catch (err) {
+      console.warn('preloadRewardedAd caught error, falling back safely:', err);
+      return false;
+    }
   }
 
   /**
-   * Attempts to show a native or GPT/H5 rewarded ad immediately.
-   * Returns `{ handledExternally: true, result }` if a native or GPT fullscreen ad was shown,
-   * or `{ handledExternally: false }` so `AdStationModal` can render its embedded H5 Rewarded Ad player.
+   * Attempts to show a native or GPT/H5 rewarded ad immediately with robust error handling.
    */
   public async showRewardedAd(
     placementName: string,
     adUnitIdOverride?: string
   ): Promise<{ handledExternally: boolean; result?: AdMobRewardResult }> {
-    const adUnitId = adUnitIdOverride || this.config.rewardedAdUnitId;
+    try {
+      const adUnitId = adUnitIdOverride || this.config.rewardedAdUnitId;
 
-    // 1. Native Capacitor AdMob
-    if (this.config.platform === 'capacitor-native') {
-      try {
-        let rewardItem: AdMobRewardItem | null = null;
-        const listener = await AdMob.addListener(
-          RewardAdPluginEvents.Rewarded,
-          (reward: AdMobRewardItem) => {
-            rewardItem = reward;
-          }
-        );
-        const shownReward = await AdMob.showRewardVideoAd();
-        await listener.remove();
-        const finalReward = shownReward || rewardItem || { type: placementName, amount: 1 };
-        return {
-          handledExternally: true,
-          result: {
-            rewarded: true,
-            type: finalReward.type,
-            amount: finalReward.amount,
-            adUnitId,
-            provider: 'capacitor-admob',
-            transactionId: `cap-${Date.now()}`,
-          },
-        };
-      } catch {
-        // Fallback to web
-      }
-    }
-
-    // 2. If GPT Out-Of-Page Rewarded Slot is ready to display
-    if (this.gptMakeRewardedVisible) {
-      return new Promise((resolve) => {
-        this.pendingRewardCallback = (res) => {
-          resolve({ handledExternally: true, result: res });
-        };
+      // 1. Native Capacitor AdMob
+      if (this.config.platform === 'capacitor-native') {
         try {
-          this.gptMakeRewardedVisible?.();
-        } catch {
-          this.pendingRewardCallback = null;
-          resolve({ handledExternally: false });
+          let rewardItem: AdMobRewardItem | null = null;
+          const listener = await AdMob.addListener(
+            RewardAdPluginEvents.Rewarded,
+            (reward: AdMobRewardItem) => {
+              rewardItem = reward;
+            }
+          );
+          const shownReward = await AdMob.showRewardVideoAd();
+          await listener.remove();
+          const finalReward = shownReward || rewardItem || { type: placementName, amount: 1 };
+          return {
+            handledExternally: true,
+            result: {
+              rewarded: true,
+              type: finalReward.type,
+              amount: finalReward.amount,
+              adUnitId,
+              provider: 'capacitor-admob',
+              transactionId: `cap-${Date.now()}`,
+            },
+          };
+        } catch (err) {
+          console.warn('Native showRewardVideoAd error:', err);
         }
-      });
-    }
+      }
 
-    // 3. Otherwise allow AdStationModal's H5 Rewarded Video Player to render with AdMob telemetry
-    return { handledExternally: false };
+      // 2. If GPT Out-Of-Page Rewarded Slot is ready to display
+      if (this.gptMakeRewardedVisible) {
+        return new Promise((resolve) => {
+          this.pendingRewardCallback = (res) => {
+            resolve({ handledExternally: true, result: res });
+          };
+          try {
+            this.gptMakeRewardedVisible?.();
+          } catch (err) {
+            console.warn('gptMakeRewardedVisible error:', err);
+            this.pendingRewardCallback = null;
+            resolve({ handledExternally: false });
+          }
+        });
+      }
+
+      // 3. Otherwise allow AdStationModal's H5 Rewarded Video Player to render with AdMob telemetry
+      return { handledExternally: false };
+    } catch (err) {
+      console.warn('showRewardedAd error, falling back to H5 player:', err);
+      return { handledExternally: false };
+    }
   }
 }
 
