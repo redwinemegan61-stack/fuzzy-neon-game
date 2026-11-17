@@ -30,6 +30,7 @@ import { INITIAL_TRADING_POST_STATE, BURROW_TRADE_ITEMS } from './data/tradingPo
 import { ACHIEVEMENTS, getAchievementProgress } from './data/achievementsData';
 import { AdStationModal } from './components/AdStationModal';
 import { BoardTileEventPopup, BoardTileEventData } from './components/BoardTileEventPopup';
+import { AppZipExportModal } from './components/AppZipExportModal';
 import confetti from 'canvas-confetti';
 
 const STORAGE_KEY = 'neon_fuzz_game_save_v1';
@@ -143,6 +144,7 @@ export default function App() {
   const [levelUpData, setLevelUpData] = useState<LevelUpData | null>(null);
   const [isStreakModalOpen, setIsStreakModalOpen] = useState(false);
   const [isTradingPostOpen, setIsTradingPostOpen] = useState(false);
+  const [isZipModalOpen, setIsZipModalOpen] = useState(false);
   const [boardTileEvent, setBoardTileEvent] = useState<BoardTileEventData | null>(null);
   const [abilityMultiplierEvent, setAbilityMultiplierEvent] = useState<{
     id: string;
@@ -1291,6 +1293,7 @@ export default function App() {
         dailyStreakDays={gameState.dailyStreak?.currentStreak || 1}
         dailyStreakClaimedToday={gameState.dailyStreak?.claimedToday || false}
         onOpenDailyStreak={() => setIsStreakModalOpen(true)}
+        onOpenZipExport={() => setIsZipModalOpen(true)}
       />
 
       {/* Floating Toast Notification */}
@@ -1926,6 +1929,13 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+
+      {/* 12. App Source Code ZIP Export Modal */}
+      <AppZipExportModal
+        isOpen={isZipModalOpen}
+        onClose={() => setIsZipModalOpen(false)}
+        onToast={(text, color) => showToast(text, color)}
+      />
     </div>
   );
 }

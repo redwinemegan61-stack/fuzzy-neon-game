@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Coins, Shield, Trophy, Sparkles, Volume2, Plus, Star, Flame, Gamepad2, ArrowLeftRight } from 'lucide-react';
+import { Coins, Shield, Trophy, Sparkles, Volume2, Plus, Star, Flame, Gamepad2, ArrowLeftRight, Download } from 'lucide-react';
 import { Mascot } from '../types';
 import { MascotAvatar } from './MascotAvatar';
 import { SoundEngine } from '../utils/sound';
@@ -25,6 +25,7 @@ interface GameHeaderProps {
   onOpenScanner: () => void;
   onOpenLevelOverlay?: () => void;
   onOpenTradingPost?: () => void;
+  onOpenZipExport?: () => void;
 }
 
 export const GameHeader: React.FC<GameHeaderProps> = ({
@@ -47,6 +48,7 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
   onOpenScanner,
   onOpenLevelOverlay,
   onOpenTradingPost,
+  onOpenZipExport,
 }) => {
   return (
     <header className="w-full max-w-md mx-auto px-3 py-2 flex flex-col gap-2">
@@ -197,6 +199,17 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
             </span>
           )}
         </button>
+
+        {onOpenZipExport && (
+          <button
+            onClick={onOpenZipExport}
+            className="py-1.5 px-2.5 rounded-xl bg-gradient-to-r from-emerald-950/90 to-teal-950/90 border border-emerald-400/60 hover:border-emerald-300 text-emerald-300 hover:text-white text-[11px] font-black flex items-center justify-center gap-1 transition-all shadow-[0_0_12px_rgba(16,185,129,0.25)] cursor-pointer"
+            title="Download Android .AAB Package or Source .ZIP"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <span>AAB/ZIP</span>
+          </button>
+        )}
       </div>
     </header>
   );
