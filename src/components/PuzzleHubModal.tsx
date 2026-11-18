@@ -46,6 +46,7 @@ export const PuzzleHubModal: React.FC<PuzzleHubModalProps> = ({
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<PuzzleCategory>(initialCategory);
+  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [resetTimer, setResetTimer] = useState(getTimeUntilDailyReset().formatted);
 
   // Sync tab if initialCategory changes
@@ -68,15 +69,35 @@ export const PuzzleHubModal: React.FC<PuzzleHubModalProps> = ({
   const isCompletedToday = dailyFeaturedState?.lastCompletedDate === todayStr;
   const isViewingFeaturedCategory = activeTab === featuredPuzzle.category;
 
-  const handleGameSolved = (baseReward: { coins: number; xp: number; diceBonus: number }, sourceTitle: string) => {
-    if (isViewingFeaturedCategory && !isCompletedToday && onCompleteDailyFeatured) {
-      onCompleteDailyFeatured(featuredPuzzle, baseReward);
-    } else {
-      onCompleteReward({ ...rewardWithBoost(baseReward), sourceTitle });
+  const getDifficultyMultiplier = (diff: 'easy' | 'medium' | 'hard') => {
+    switch (diff) {
+      case 'easy':
+        return 1.0;
+      case 'medium':
+        return 1.5;
+      case 'hard':
+        return 2.5;
     }
   };
 
-  const rewardWithBoost = (base: { coins: number; xp: number; diceBonus: number }) => base;
+  const handleGameSolved = (baseReward: { coins: number; xp: number; diceBonus: number }, sourceTitle: string) => {
+    const mult = getDifficultyMultiplier(difficulty);
+    const scaledReward = {
+      coins: Math.round(baseReward.coins * mult),
+      xp: Math.round(baseReward.xp * mult),
+      diceBonus: Math.round(baseReward.diceBonus * (mult > 1 ? Math.sqrt(mult) : 1)),
+    };
+
+    if (isViewingFeaturedCategory && !isCompletedToday && onCompleteDailyFeatured) {
+      onCompleteDailyFeatured(featuredPuzzle, {
+        coins: Math.round(featuredPuzzle.bonusCoins * mult),
+        xp: scaledReward.xp,
+        diceBonus: scaledReward.diceBonus,
+      });
+    } else {
+      onCompleteReward({ ...scaledReward, sourceTitle: `${sourceTitle} (${difficulty.toUpperCase()})` });
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/85 backdrop-blur-md overflow-y-auto">
@@ -170,6 +191,60 @@ export const PuzzleHubModal: React.FC<PuzzleHubModalProps> = ({
                 {isViewingFeaturedCategory ? '★ Active Tab' : 'Switch Tab ➔'}
               </span>
             </div>
+          </div>
+        </div>
+
+        {/* Difficulty Level Selection */}
+        <div className="mb-3 flex items-center justify-between gap-1.5 p-1 rounded-2xl bg-slate-950/90 border border-slate-800 z-10">
+          <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 flex items-center gap-1">
+            <span>⚙️</span>
+            <span>Difficulty:</span>
+          </div>
+          <div className="grid grid-cols-3 gap-1 flex-1">
+            <button
+              onClick={() => {
+                setDifficulty('easy');
+                SoundEngine.playBoardHop();
+              }}
+              className={`py-1.5 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                difficulty === 'easy'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md scale-102'
+                  : 'text-slate-400 hover:text-white bg-slate-900/60'
+              }`}
+            >
+              <span>🌱</span>
+              <span>Easy (1x)</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setDifficulty('medium');
+                SoundEngine.playBoardHop();
+              }}
+              className={`py-1.5 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                difficulty === 'medium'
+                  ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 shadow-md scale-102'
+                  : 'text-slate-400 hover:text-white bg-slate-900/60'
+              }`}
+            >
+              <span>⭐</span>
+              <span>Medium (1.5x)</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setDifficulty('hard');
+                SoundEngine.playBoardHop();
+              }}
+              className={`py-1.5 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                difficulty === 'hard'
+                  ? 'bg-gradient-to-r from-rose-500 to-pink-600 text-white shadow-md scale-102'
+                  : 'text-slate-400 hover:text-white bg-slate-900/60'
+              }`}
+            >
+              <span>🔥</span>
+              <span>Hard (2.5x)</span>
+            </button>
           </div>
         </div>
 
