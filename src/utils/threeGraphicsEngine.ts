@@ -102,9 +102,9 @@ export function createThreeGraphicsEngine(
 
     bloomPass = new UnrealBloomPass(
       new THREE.Vector2(width, height),
-      options?.bloomStrength ?? 0.36,
-      options?.bloomRadius ?? 0.45,
-      options?.bloomThreshold ?? 0.82
+      options?.bloomStrength ?? 0.15,
+      options?.bloomRadius ?? 0.40,
+      options?.bloomThreshold ?? 0.88
     );
     composer.addPass(bloomPass);
 

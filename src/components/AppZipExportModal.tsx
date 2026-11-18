@@ -27,9 +27,18 @@ interface ZipExportInfo {
   base64Zip: string;
 }
 
+type AndroidBuildType = 'release' | 'debug';
+type AndroidProductFlavor = 'playstore' | 'staging';
+
 interface AabExportInfo {
   filename: string;
+  variantName: string;
+  gradleTask: string;
+  buildType: AndroidBuildType;
+  flavor: AndroidProductFlavor;
+  debuggable: boolean;
   packageId: string;
+  appName: string;
   versionName: string;
   versionCode: number;
   fileCount: number;
@@ -50,6 +59,8 @@ export const AppZipExportModal: React.FC<AppZipExportModalProps> = ({
   onToast,
 }) => {
   const [activeMode, setActiveMode] = useState<'aab' | 'zip'>('aab');
+  const [flavor, setFlavor] = useState<AndroidProductFlavor>('playstore');
+  const [buildType, setBuildType] = useState<AndroidBuildType>('release');
   const [zipInfo, setZipInfo] = useState<ZipExportInfo | null>(null);
   const [aabInfo, setAabInfo] = useState<AabExportInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -63,27 +74,39 @@ export const AppZipExportModal: React.FC<AppZipExportModalProps> = ({
       ? window.location.origin
       : 'https://ais-pre-3cwhq6kmkpw6nwxbpfaxgp-464573425992.us-west1.run.app';
 
-  const aabDirectUrl = `${originUrl}/api/export-aab`;
-  const androidProjectDirectUrl = `${originUrl}/api/export-android-project`;
+  const variantQuery = `flavor=${flavor}&buildType=${buildType}`;
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const activeVariantName = `${flavor}${capitalize(buildType)}`;
+  const activeGradleTask = `bundle${capitalize(flavor)}${capitalize(buildType)}`;
+  const activePackageId = `com.neonfuzz.boardempire${flavor === 'staging' ? '.staging' : ''}${
+    buildType === 'debug' ? '.debug' : ''
+  }`;
+  const activeAabFilename = `neon-fuzz-${flavor}-${buildType}.aab`;
+  const activeKitFilename = `neon-fuzz-android-studio-${flavor}-${buildType}-kit.zip`;
+
+  const aabDirectUrl = `${originUrl}/api/export-aab?${variantQuery}`;
+  const androidProjectDirectUrl = `${originUrl}/api/export-android-project?${variantQuery}`;
   const zipDirectUrl = `${originUrl}/api/export-zip`;
 
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
 
-    const loadExportBundles = async () => {
+    const loadAabVariant = async () => {
       setIsLoading(true);
       setErrorMsg(null);
+      setHasDownloadedAab(false);
       try {
-        const [aabRes, zipRes] = await Promise.all([
-          fetch('/api/export-aab-info'),
-          fetch('/api/export-zip-info'),
-        ]);
+        const requests: Promise<Response>[] = [fetch(`/api/export-aab-info?${variantQuery}`)];
+        if (!zipInfo) {
+          requests.push(fetch('/api/export-zip-info'));
+        }
+        const [aabRes, zipRes] = await Promise.all(requests);
         if (aabRes.ok) {
           const aabData: AabExportInfo = await aabRes.json();
           if (!cancelled) setAabInfo(aabData);
         }
-        if (zipRes.ok) {
+        if (zipRes && zipRes.ok) {
           const zipData: ZipExportInfo = await zipRes.json();
           if (!cancelled) setZipInfo(zipData);
         }
@@ -98,14 +121,19 @@ export const AppZipExportModal: React.FC<AppZipExportModalProps> = ({
       }
     };
 
-    loadExportBundles();
+    loadAabVariant();
     return () => {
       cancelled = true;
     };
-  }, [isOpen]);
+  }, [isOpen, variantQuery]);
 
   const triggerAabDownload = () => {
-    if (aabInfo?.base64Aab) {
+    const downloadName = aabInfo?.filename || activeAabFilename;
+    if (
+      aabInfo?.base64Aab &&
+      aabInfo.flavor === flavor &&
+      aabInfo.buildType === buildType
+    ) {
       try {
         const binaryString = window.atob(aabInfo.base64Aab);
         const len = binaryString.length;
@@ -117,13 +145,13 @@ export const AppZipExportModal: React.FC<AppZipExportModalProps> = ({
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = aabInfo.filename || 'neon-fuzz-release.aab';
+        a.download = downloadName;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 5000);
         setHasDownloadedAab(true);
-        onToast?.('🤖 Downloading neon-fuzz-release.aab!', '#10b981');
+        onToast?.(`🤖 Downloading ${downloadName}!`, '#10b981');
         return;
       } catch (e) {
         // Fallback to direct anchor
@@ -131,23 +159,23 @@ export const AppZipExportModal: React.FC<AppZipExportModalProps> = ({
     }
 
     const a = document.createElement('a');
-    a.href = '/api/export-aab';
-    a.download = 'neon-fuzz-release.aab';
+    a.href = `/api/export-aab?${variantQuery}`;
+    a.download = downloadName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     setHasDownloadedAab(true);
-    onToast?.('🤖 Downloading neon-fuzz-release.aab!', '#10b981');
+    onToast?.(`🤖 Downloading ${downloadName}!`, '#10b981');
   };
 
   const triggerAndroidStudioKitDownload = () => {
     const a = document.createElement('a');
-    a.href = '/api/export-android-project';
-    a.download = 'neon-fuzz-android-studio-aab-kit.zip';
+    a.href = `/api/export-android-project?${variantQuery}`;
+    a.download = activeKitFilename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    onToast?.('📦 Downloading Android Studio Gradle AAB Kit!', '#00f0ff');
+    onToast?.(`📦 Downloading ${activeKitFilename}!`, '#00f0ff');
   };
 
   const triggerZipDownload = () => {
@@ -240,12 +268,12 @@ export const AppZipExportModal: React.FC<AppZipExportModalProps> = ({
                         : 'App Source ZIP Package'}
                     </h2>
                     <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
-                      Ready
+                      {activeMode === 'aab' ? activeVariantName : 'Ready'}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-300">
                     {activeMode === 'aab'
-                      ? 'Google Play Android App Bundle (com.neonfuzz.boardempire)'
+                      ? `Google Play App Bundle (${activePackageId})`
                       : 'Complete React + Three.js PBR + Express TypeScript project'}
                   </p>
                 </div>
@@ -291,31 +319,105 @@ export const AppZipExportModal: React.FC<AppZipExportModalProps> = ({
                 <>
                   {/* Android AAB Card */}
                   <div className="rounded-2xl bg-slate-900/90 border border-emerald-500/40 p-4 flex flex-col gap-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <PackageCheck className="w-4 h-4 text-emerald-400" />
-                        <span className="text-xs font-black text-white">
-                          {aabInfo?.filename || 'neon-fuzz-release.aab'}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <PackageCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span className="text-xs font-black text-white truncate">
+                          {aabInfo?.filename || activeAabFilename}
                         </span>
                       </div>
                       {aabInfo && (
-                        <span className="text-[11px] font-black text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-2.5 py-0.5 rounded-lg">
+                        <span className="text-[11px] font-black text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-2.5 py-0.5 rounded-lg shrink-0">
                           {formatBytes(aabInfo.sizeBytes)} • v{aabInfo.versionName}
                         </span>
                       )}
                     </div>
 
+                    {/* Bundle Variant Selector (Product Flavor + Build Type) */}
+                    <div className="bg-slate-950/90 p-3 rounded-xl border border-slate-800 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                          Bundle Variant
+                        </span>
+                        <span className="font-mono text-[10px] font-bold text-amber-300">
+                          gradle {activeGradleTask}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <span className="text-[9px] font-bold uppercase text-slate-500 block">
+                            Product Flavor
+                          </span>
+                          <div className="grid grid-cols-2 gap-1 p-0.5 rounded-lg bg-slate-900 border border-slate-800">
+                            <button
+                              type="button"
+                              onClick={() => setFlavor('playstore')}
+                              className={`py-1 px-1.5 rounded-md text-[10px] font-black transition-all cursor-pointer ${
+                                flavor === 'playstore'
+                                  ? 'bg-emerald-500/25 text-emerald-200 border border-emerald-400/50'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              Play Store
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFlavor('staging')}
+                              className={`py-1 px-1.5 rounded-md text-[10px] font-black transition-all cursor-pointer ${
+                                flavor === 'staging'
+                                  ? 'bg-amber-500/25 text-amber-200 border border-amber-400/50'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              Staging
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <span className="text-[9px] font-bold uppercase text-slate-500 block">
+                            Build Type
+                          </span>
+                          <div className="grid grid-cols-2 gap-1 p-0.5 rounded-lg bg-slate-900 border border-slate-800">
+                            <button
+                              type="button"
+                              onClick={() => setBuildType('release')}
+                              className={`py-1 px-1.5 rounded-md text-[10px] font-black transition-all cursor-pointer ${
+                                buildType === 'release'
+                                  ? 'bg-cyan-500/25 text-cyan-200 border border-cyan-400/50'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              Release
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setBuildType('debug')}
+                              className={`py-1 px-1.5 rounded-md text-[10px] font-black transition-all cursor-pointer ${
+                                buildType === 'debug'
+                                  ? 'bg-fuchsia-500/25 text-fuchsia-200 border border-fuchsia-400/50'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              Debug
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-2 text-[10px] bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-                      <div>
-                        <span className="text-slate-400 block">Package ID:</span>
-                        <span className="font-mono font-bold text-emerald-300">
-                          com.neonfuzz.boardempire
+                      <div className="min-w-0">
+                        <span className="text-slate-400 block">Application ID:</span>
+                        <span className="font-mono font-bold text-emerald-300 truncate block">
+                          {aabInfo?.packageId || activePackageId}
                         </span>
                       </div>
                       <div>
-                        <span className="text-slate-400 block">Target / Min SDK:</span>
+                        <span className="text-slate-400 block">WebView / Debuggable:</span>
                         <span className="font-mono font-bold text-cyan-300">
-                          API 34 / API 24 (GLES 3.0)
+                          {buildType === 'debug' ? 'Enabled (DevTools)' : 'Release Locked'}
                         </span>
                       </div>
                     </div>
@@ -329,10 +431,10 @@ export const AppZipExportModal: React.FC<AppZipExportModalProps> = ({
                       <Download className="w-4 h-4 stroke-[2.5]" />
                       <span>
                         {isLoading
-                          ? 'Packaging neon-fuzz-release.aab...'
+                          ? `Packaging ${activeAabFilename}...`
                           : hasDownloadedAab
-                          ? 'Download neon-fuzz-release.aab Again'
-                          : 'Download Android .AAB Package'}
+                          ? `Download ${activeAabFilename} Again`
+                          : `Download ${activeVariantName} .AAB`}
                       </span>
                     </button>
 
@@ -342,7 +444,7 @@ export const AppZipExportModal: React.FC<AppZipExportModalProps> = ({
                       className="w-full py-2.5 px-3 rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-cyan-500/40 hover:border-cyan-400 text-cyan-200 font-bold text-[11px] flex items-center justify-center gap-2 transition-all cursor-pointer"
                     >
                       <FolderCode className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Download Android Studio + Gradle Signing Kit (.ZIP)</span>
+                      <span>Download Android Studio Gradle Kit ({activeVariantName})</span>
                     </button>
 
                     {/* Copyable Direct Links */}
@@ -353,8 +455,8 @@ export const AppZipExportModal: React.FC<AppZipExportModalProps> = ({
 
                       <div className="flex items-center justify-between gap-2 bg-slate-950 px-2.5 py-1.5 rounded-xl border border-slate-800">
                         <a
-                          href="/api/export-aab"
-                          download="neon-fuzz-release.aab"
+                          href={`/api/export-aab?${variantQuery}`}
+                          download={activeAabFilename}
                           className="font-mono text-[10px] text-emerald-400 hover:underline truncate"
                         >
                           {aabDirectUrl}
@@ -374,8 +476,8 @@ export const AppZipExportModal: React.FC<AppZipExportModalProps> = ({
 
                       <div className="flex items-center justify-between gap-2 bg-slate-950 px-2.5 py-1.5 rounded-xl border border-slate-800">
                         <a
-                          href="/api/export-android-project"
-                          download="neon-fuzz-android-studio-aab-kit.zip"
+                          href={`/api/export-android-project?${variantQuery}`}
+                          download={activeKitFilename}
                           className="font-mono text-[10px] text-cyan-400 hover:underline truncate"
                         >
                           {androidProjectDirectUrl}

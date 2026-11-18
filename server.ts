@@ -482,9 +482,87 @@ function collectDistWebAssets(rootDir: string): Array<{ relPath: string; content
   return results;
 }
 
-function buildAndroidAabBundleEntries(rootDir: string): Array<{ relPath: string; content: Buffer }> {
-  const appUrl = "https://ais-pre-3cwhq6kmkpw6nwxbpfaxgp-464573425992.us-west1.run.app";
-  const packageId = "com.neonfuzz.boardempire";
+type AndroidBuildType = "release" | "debug";
+type AndroidProductFlavor = "playstore" | "staging";
+
+interface AndroidBundleVariantConfig {
+  buildType: AndroidBuildType;
+  flavor: AndroidProductFlavor;
+  variantName: string;
+  gradleTask: string;
+  packageId: string;
+  appName: string;
+  launcherName: string;
+  versionName: string;
+  versionCode: number;
+  aabFilename: string;
+  kitFilename: string;
+  debuggable: boolean;
+  appUrl: string;
+  host: string;
+}
+
+function resolveAndroidBundleVariant(query: Record<string, any> = {}): AndroidBundleVariantConfig {
+  const rawVariant = typeof query.variant === "string" ? query.variant.toLowerCase() : "";
+  let flavor: AndroidProductFlavor =
+    query.flavor === "staging" || rawVariant.includes("staging") ? "staging" : "playstore";
+  let buildType: AndroidBuildType =
+    query.buildType === "debug" || rawVariant.includes("debug") ? "debug" : "release";
+
+  const basePackageId = "com.neonfuzz.boardempire";
+  const flavorSuffix = flavor === "staging" ? ".staging" : "";
+  const buildSuffix = buildType === "debug" ? ".debug" : "";
+  const packageId = `${basePackageId}${flavorSuffix}${buildSuffix}`;
+
+  const versionParts = ["1.0.0"];
+  if (flavor === "staging") versionParts.push("staging");
+  if (buildType === "debug") versionParts.push("debug");
+  const versionName = versionParts.join("-");
+
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const variantName = `${flavor}${capitalize(buildType)}`;
+  const gradleTask = `bundle${capitalize(flavor)}${capitalize(buildType)}`;
+
+  const appName =
+    flavor === "staging"
+      ? buildType === "debug"
+        ? "Neon Fuzz (Staging Debug)"
+        : "Neon Fuzz (Staging)"
+      : buildType === "debug"
+      ? "Neon Fuzz (Debug)"
+      : "Neon Fuzz: Board & Reflex Empire";
+
+  const launcherName = flavor === "staging" ? "Neon Fuzz QA" : "Neon Fuzz";
+  const host =
+    flavor === "staging"
+      ? "ais-dev-3cwhq6kmkpw6nwxbpfaxgp-464573425992.us-west1.run.app"
+      : "ais-pre-3cwhq6kmkpw6nwxbpfaxgp-464573425992.us-west1.run.app";
+  const appUrl = `https://${host}`;
+
+  return {
+    buildType,
+    flavor,
+    variantName,
+    gradleTask,
+    packageId,
+    appName,
+    launcherName,
+    versionName,
+    versionCode: 1,
+    aabFilename: `neon-fuzz-${flavor}-${buildType}.aab`,
+    kitFilename: `neon-fuzz-android-studio-${flavor}-${buildType}-kit.zip`,
+    debuggable: buildType === "debug",
+    appUrl,
+    host,
+  };
+}
+
+function buildAndroidAabBundleEntries(
+  rootDir: string,
+  variant: AndroidBundleVariantConfig = resolveAndroidBundleVariant()
+): Array<{ relPath: string; content: Buffer }> {
+  const { appUrl, host, packageId, appName, launcherName, versionName, versionCode, debuggable } =
+    variant;
 
   // Protobuf-compatible BundleConfig.pb binary header (bundletool version 1.15.6)
   const versionStr = "1.15.6";
@@ -494,11 +572,12 @@ function buildAndroidAabBundleEntries(rootDir: string): Array<{ relPath: string;
     Buffer.from([0x12, 0x04, 0x08, 0x01, 0x10, 0x01]),
   ]);
 
+  const escapedAppName = appName.replace(/&/g, "&amp;");
   const androidManifestXml = `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="${packageId}"
-    android:versionCode="1"
-    android:versionName="1.0.0">
+    android:versionCode="${versionCode}"
+    android:versionName="${versionName}">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -507,8 +586,9 @@ function buildAndroidAabBundleEntries(rootDir: string): Array<{ relPath: string;
 
     <application
         android:allowBackup="true"
+        android:debuggable="${debuggable}"
         android:hardwareAccelerated="true"
-        android:label="Neon Fuzz: Board &amp; Reflex Empire"
+        android:label="${escapedAppName}"
         android:supportsRtl="true"
         android:usesCleartextTraffic="false"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
@@ -518,7 +598,7 @@ function buildAndroidAabBundleEntries(rootDir: string): Array<{ relPath: string;
             android:value='[{"relation": ["delegate_permission/common.handle_all_urls"], "target": {"namespace": "web", "site": "${appUrl}"}}]' />
 
         <activity
-            android:name="${packageId}.MainActivity"
+            android:name="com.neonfuzz.boardempire.MainActivity"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
             android:exported="true"
             android:launchMode="singleTask"
@@ -531,7 +611,7 @@ function buildAndroidAabBundleEntries(rootDir: string): Array<{ relPath: string;
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="ais-pre-3cwhq6kmkpw6nwxbpfaxgp-464573425992.us-west1.run.app" />
+                <data android:scheme="https" android:host="${host}" />
             </intent-filter>
         </activity>
     </application>
@@ -540,7 +620,7 @@ function buildAndroidAabBundleEntries(rootDir: string): Array<{ relPath: string;
   const capacitorConfig = JSON.stringify(
     {
       appId: packageId,
-      appName: "Neon Fuzz: Board & Reflex Empire",
+      appName,
       webDir: "dist",
       bundledWebRuntime: false,
       server: {
@@ -550,7 +630,7 @@ function buildAndroidAabBundleEntries(rootDir: string): Array<{ relPath: string;
       android: {
         allowMixedContent: false,
         captureInput: true,
-        webContentsDebuggingEnabled: false,
+        webContentsDebuggingEnabled: debuggable,
       },
     },
     null,
@@ -560,9 +640,9 @@ function buildAndroidAabBundleEntries(rootDir: string): Array<{ relPath: string;
   const twaManifest = JSON.stringify(
     {
       packageId,
-      host: "ais-pre-3cwhq6kmkpw6nwxbpfaxgp-464573425992.us-west1.run.app",
-      name: "Neon Fuzz: Board & Reflex Empire",
-      launcherName: "Neon Fuzz",
+      host,
+      name: appName,
+      launcherName,
       display: "standalone",
       themeColor: "#070815",
       navigationColor: "#070815",
@@ -570,8 +650,8 @@ function buildAndroidAabBundleEntries(rootDir: string): Array<{ relPath: string;
       enableNotifications: true,
       startUrl: "/",
       iconUrl: `${appUrl}/favicon.ico`,
-      appVersionName: "1.0.0",
-      appVersionCode: 1,
+      appVersionName: versionName,
+      appVersionCode: versionCode,
       shortcuts: [],
       generatorApp: "bubblewrap-cli",
       webManifestUrl: `${appUrl}/manifest.webmanifest`,
@@ -586,8 +666,11 @@ function buildAndroidAabBundleEntries(rootDir: string): Array<{ relPath: string;
     "Manifest-Version: 1.0",
     "Created-By: Neon Fuzz Android App Bundle Exporter 1.0.0",
     `Package-Name: ${packageId}`,
-    "Version-Code: 1",
-    "Version-Name: 1.0.0",
+    `Build-Variant: ${variant.variantName}`,
+    `Product-Flavor: ${variant.flavor}`,
+    `Build-Type: ${variant.buildType}`,
+    `Version-Code: ${versionCode}`,
+    `Version-Name: ${versionName}`,
     "",
   ].join("\r\n");
 
@@ -603,19 +686,24 @@ function buildAndroidAabBundleEntries(rootDir: string): Array<{ relPath: string;
   return entries;
 }
 
-function buildAndroidStudioProjectEntries(rootDir: string): Array<{ relPath: string; content: Buffer }> {
+function buildAndroidStudioProjectEntries(
+  rootDir: string,
+  variant: AndroidBundleVariantConfig = resolveAndroidBundleVariant()
+): Array<{ relPath: string; content: Buffer }> {
   const baseFiles = collectProjectFiles(rootDir);
-  const appUrl = "https://ais-pre-3cwhq6kmkpw6nwxbpfaxgp-464573425992.us-west1.run.app";
-  const packageId = "com.neonfuzz.boardempire";
+  const basePackageId = "com.neonfuzz.boardempire";
 
   const capacitorConfig = JSON.stringify(
     {
-      appId: packageId,
-      appName: "Neon Fuzz: Board & Reflex Empire",
+      appId: variant.packageId,
+      appName: variant.appName,
       webDir: "dist",
       server: {
-        url: appUrl,
+        url: variant.appUrl,
         cleartext: false,
+      },
+      android: {
+        webContentsDebuggingEnabled: variant.debuggable,
       },
     },
     null,
@@ -646,23 +734,52 @@ include ':app'`;
 }
 
 android {
-    namespace "${packageId}"
+    namespace "${basePackageId}"
     compileSdk 34
 
     defaultConfig {
-        applicationId "${packageId}"
+        applicationId "${basePackageId}"
         minSdk 24
         targetSdk 34
-        versionCode 1
+        versionCode ${variant.versionCode}
         versionName "1.0.0"
     }
 
+    flavorDimensions += "channel"
+    productFlavors {
+        playstore {
+            dimension "channel"
+            resValue "string", "app_name", "Neon Fuzz: Board & Reflex Empire"
+            buildConfigField "String", "APP_URL", "\\"https://ais-pre-3cwhq6kmkpw6nwxbpfaxgp-464573425992.us-west1.run.app\\""
+        }
+        staging {
+            dimension "channel"
+            applicationIdSuffix ".staging"
+            versionNameSuffix "-staging"
+            resValue "string", "app_name", "Neon Fuzz (Staging)"
+            buildConfigField "String", "APP_URL", "\\"https://ais-dev-3cwhq6kmkpw6nwxbpfaxgp-464573425992.us-west1.run.app\\""
+        }
+    }
+
     buildTypes {
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+            debuggable true
+            minifyEnabled false
+            shrinkResources false
+        }
         release {
+            debuggable false
             minifyEnabled false
             shrinkResources false
         }
     }
+
+    buildFeatures {
+        buildConfig true
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -674,7 +791,7 @@ dependencies {
     implementation 'androidx.webkit:webkit:1.10.0'
 }`;
 
-  const mainActivityJava = `package ${packageId};
+  const mainActivityJava = `package ${basePackageId};
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -690,6 +807,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (BuildConfig.DEBUG) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
         webView = new WebView(this);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -697,7 +817,7 @@ public class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         webView.setWebViewClient(new WebViewClient());
         setContentView(webView);
-        webView.loadUrl("${appUrl}");
+        webView.loadUrl(BuildConfig.APP_URL);
     }
 
     @Override
@@ -710,9 +830,20 @@ public class MainActivity extends Activity {
     }
 }`;
 
-  const githubActionYaml = `name: Build Signed Android AAB
+  const githubActionYaml = `name: Build Android AAB Variant
 on:
   workflow_dispatch:
+    inputs:
+      gradle_task:
+        description: 'Gradle bundle variant task'
+        required: true
+        default: '${variant.gradleTask}'
+        type: choice
+        options:
+          - bundlePlaystoreRelease
+          - bundlePlaystoreDebug
+          - bundleStagingRelease
+          - bundleStagingDebug
   push:
     branches: [ main ]
 
@@ -732,33 +863,42 @@ jobs:
         run: |
           npm install
           npm run build
-      - name: Setup Android SDK & Build Release AAB
+      - name: Setup Android SDK & Build AAB Variant
         uses: android-actions/setup-android@v3
-      - name: Generate Release AAB via Gradle
+      - name: Generate AAB via Gradle
         working-directory: ./android
-        run: gradle bundleRelease
+        run: gradle \${{ github.event.inputs.gradle_task || '${variant.gradleTask}' }}
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: neon-fuzz-release-aab
-          path: android/app/build/outputs/bundle/release/*.aab
+          name: neon-fuzz-aab-\${{ github.event.inputs.gradle_task || '${variant.gradleTask}' }}
+          path: android/app/build/outputs/bundle/**/*.aab
 `;
 
-  const aabReadme = `# Neon Fuzz: Android App Bundle (.AAB) Build & Play Store Guide
+  const aabReadme = `# Neon Fuzz: Android App Bundle (.AAB) Build & Variant Guide
+
+Selected Variant: **${variant.variantName}** (\`${variant.packageId}\`, \`v${variant.versionName}\`)
+
+## Available Gradle Bundle Variants
+- \`gradle bundlePlaystoreRelease\` -> \`com.neonfuzz.boardempire\` (Production Play Store)
+- \`gradle bundlePlaystoreDebug\` -> \`com.neonfuzz.boardempire.debug\` (Debuggable Play Store)
+- \`gradle bundleStagingRelease\` -> \`com.neonfuzz.boardempire.staging\` (Staging / Internal QA)
+- \`gradle bundleStagingDebug\` -> \`com.neonfuzz.boardempire.staging.debug\` (Staging Debug)
 
 ## Option 1: Direct Pre-Packaged AAB
-You can download \`neon-fuzz-release.aab\` directly from \`/api/export-aab\`.
+You can download \`${variant.aabFilename}\` directly from \`/api/export-aab?flavor=${variant.flavor}&buildType=${variant.buildType}\`.
 
 ## Option 2: Build & Sign with Your Upload Key in Android Studio
 1. Open the \`android/\` folder in **Android Studio**.
-2. Go to **Build > Generate Signed Bundle / APK...** -> select **Android App Bundle**.
-3. Choose or create your Play Store Upload Keystore and click **Create** to generate \`app-release.aab\`.
+2. Select your desired Build Variant in the **Build Variants** tool window (e.g. \`${variant.variantName}\`).
+3. Go to **Build > Generate Signed Bundle / APK...** -> select **Android App Bundle**.
+4. Choose or create your Play Store Upload Keystore and click **Create** to generate the signed \`.aab\`.
 
 ## Option 3: One-Click Cloud AAB via GitHub Actions
-Push this repository to GitHub; the included workflow (\`.github/workflows/build-android-aab.yml\`) automatically compiles and outputs \`app-release.aab\` under the Actions Artifacts tab!
+Push this repository to GitHub; the included workflow (\`.github/workflows/build-android-aab.yml\`) compiles the chosen variant (\`${variant.gradleTask}\`) and uploads the \`.aab\` under Actions Artifacts.
 `;
 
-  const aabEntries = buildAndroidAabBundleEntries(rootDir);
+  const aabEntries = buildAndroidAabBundleEntries(rootDir, variant);
   const manifestEntry = aabEntries.find((e) => e.relPath === "base/manifest/AndroidManifest.xml");
 
   return [
@@ -835,10 +975,11 @@ app.get(["/app-ads.txt", "/ads.txt"], (req, res) => {
 
 app.get("/api/export-aab", (req, res) => {
   try {
-    const aabFiles = buildAndroidAabBundleEntries(process.cwd());
+    const variant = resolveAndroidBundleVariant(req.query);
+    const aabFiles = buildAndroidAabBundleEntries(process.cwd(), variant);
     const aabBuffer = buildPkZipBuffer(aabFiles);
     res.setHeader("Content-Type", "application/x-authorware-bin");
-    res.setHeader("Content-Disposition", 'attachment; filename="neon-fuzz-release.aab"');
+    res.setHeader("Content-Disposition", `attachment; filename="${variant.aabFilename}"`);
     res.setHeader("Content-Length", String(aabBuffer.length));
     return res.send(aabBuffer);
   } catch (err: any) {
@@ -849,13 +990,20 @@ app.get("/api/export-aab", (req, res) => {
 
 app.get("/api/export-aab-info", (req, res) => {
   try {
-    const aabFiles = buildAndroidAabBundleEntries(process.cwd());
+    const variant = resolveAndroidBundleVariant(req.query);
+    const aabFiles = buildAndroidAabBundleEntries(process.cwd(), variant);
     const aabBuffer = buildPkZipBuffer(aabFiles);
     return res.json({
-      filename: "neon-fuzz-release.aab",
-      packageId: "com.neonfuzz.boardempire",
-      versionName: "1.0.0",
-      versionCode: 1,
+      filename: variant.aabFilename,
+      variantName: variant.variantName,
+      gradleTask: variant.gradleTask,
+      buildType: variant.buildType,
+      flavor: variant.flavor,
+      debuggable: variant.debuggable,
+      packageId: variant.packageId,
+      appName: variant.appName,
+      versionName: variant.versionName,
+      versionCode: variant.versionCode,
       fileCount: aabFiles.length,
       sizeBytes: aabBuffer.length,
       files: aabFiles.map((f) => ({ path: f.relPath, bytes: f.content.length })),
@@ -869,10 +1017,11 @@ app.get("/api/export-aab-info", (req, res) => {
 
 app.get("/api/export-android-project", (req, res) => {
   try {
-    const files = buildAndroidStudioProjectEntries(process.cwd());
+    const variant = resolveAndroidBundleVariant(req.query);
+    const files = buildAndroidStudioProjectEntries(process.cwd(), variant);
     const zipBuffer = buildPkZipBuffer(files);
     res.setHeader("Content-Type", "application/zip");
-    res.setHeader("Content-Disposition", 'attachment; filename="neon-fuzz-android-studio-aab-kit.zip"');
+    res.setHeader("Content-Disposition", `attachment; filename="${variant.kitFilename}"`);
     res.setHeader("Content-Length", String(zipBuffer.length));
     return res.send(zipBuffer);
   } catch (err: any) {
