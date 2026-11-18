@@ -64,6 +64,7 @@ export const TradingPostModal: React.FC<TradingPostModalProps> = ({
   const [selectedSetFilter, setSelectedSetFilter] = useState<string>('all');
   const [onlyShowMatches, setOnlyShowMatches] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [inventorySortBy, setInventorySortBy] = useState<'rarity' | 'type' | 'quantity'>('rarity');
   const [swappingOfferId, setSwappingOfferId] = useState<string | null>(null);
   const [completedTradeReceipt, setCompletedTradeReceipt] = useState<{
     givenItem: BurrowTradeItem;
@@ -97,6 +98,25 @@ export const TradingPostModal: React.FC<TradingPostModalProps> = ({
       }))
       .filter((entry) => !!entry.item);
   }, [inventory]);
+
+  // Sorted duplicate items for inventory bag view
+  const sortedDuplicateItems = useMemo(() => {
+    const list = [...duplicateItems];
+    const rarityRank: Record<string, number> = { legendary: 4, epic: 3, rare: 2, common: 1 };
+
+    list.sort((a, b) => {
+      if (inventorySortBy === 'rarity') {
+        return (rarityRank[b.item.rarity] || 0) - (rarityRank[a.item.rarity] || 0);
+      } else if (inventorySortBy === 'type') {
+        return a.item.category.localeCompare(b.item.category);
+      } else if (inventorySortBy === 'quantity') {
+        return b.totalCount - a.totalCount;
+      }
+      return 0;
+    });
+
+    return list;
+  }, [duplicateItems, inventorySortBy]);
 
   // Total duplicate pieces available
   const totalDuplicatesCount = useMemo(() => {
@@ -891,6 +911,30 @@ export const TradingPostModal: React.FC<TradingPostModalProps> = ({
                   </button>
                 </div>
 
+                {/* Inventory Sorting Dropdown */}
+                {duplicateItems.length > 0 && (
+                  <div className="flex items-center justify-between gap-2 bg-slate-900/90 p-2.5 rounded-2xl border border-slate-800">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
+                      <Filter className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Sort Inventory By:</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <select
+                        value={inventorySortBy}
+                        onChange={(e) => {
+                          setInventorySortBy(e.target.value as 'rarity' | 'type' | 'quantity');
+                          SoundEngine.playTileStep();
+                        }}
+                        className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white font-bold focus:outline-none focus:border-cyan-400 cursor-pointer"
+                      >
+                        <option value="rarity">★ Rarity (High to Low)</option>
+                        <option value="type">📁 Type / Category</option>
+                        <option value="quantity">📊 Quantity (Most Owned)</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
                 {duplicateItems.length === 0 ? (
                   <div className="p-8 text-center rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
                     <div className="text-4xl">🎒</div>
@@ -901,7 +945,7 @@ export const TradingPostModal: React.FC<TradingPostModalProps> = ({
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {duplicateItems.map(({ item, duplicateCount, totalCount }) => (
+                    {sortedDuplicateItems.map(({ item, duplicateCount, totalCount }) => (
                       <div
                         key={item.id}
                         className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-3 shadow-md"
