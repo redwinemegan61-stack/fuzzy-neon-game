@@ -53,7 +53,7 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
   const [playgroundBoostCount, setPlaygroundBoostCount] = useState(0);
   const [timeOfDay, setTimeOfDay] = useState<'day' | 'twilight' | 'night'>('day');
   const [isAutoRotate, setIsAutoRotate] = useState(true);
-  const [enableBloomEngine, setEnableBloomEngine] = useState(true);
+  const [enableBloomEngine, setEnableBloomEngine] = useState(false);
   const [isHudCollapsed, setIsHudCollapsed] = useState(false);
   const [cameraViewPreset, setCameraViewPreset] = useState<'overview' | 'plaza' | 'playground' | 'windmill'>('overview');
 
@@ -182,9 +182,9 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
 
     // 2. Studio PBR & Post-Processing Engine
     const engine = createThreeGraphicsEngine(scene, camera, width, height, {
-      bloomStrength: timeOfDay === 'day' ? 0.24 : 0.42,
-      bloomRadius: 0.45,
-      bloomThreshold: 0.78,
+      bloomStrength: 0,
+      bloomRadius: 0,
+      bloomThreshold: 1.0,
       exposure: timeOfDay === 'day' ? 1.15 : 1.08,
     });
     container.appendChild(engine.renderer.domElement);
@@ -1788,18 +1788,6 @@ export const StandaloneThreeTown: React.FC<StandaloneThreeTownProps> = ({
                   : '🌙 Night'}
               </button>
 
-              <button
-                onClick={() => setEnableBloomEngine((prev) => !prev)}
-                className={`px-2 py-1 rounded-xl text-[9px] font-bold flex items-center gap-1 border transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                  enableBloomEngine
-                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/50'
-                    : 'bg-slate-900 text-slate-400 border-slate-800'
-                }`}
-                title="Toggle UnrealBloom Post-Processing Engine"
-              >
-                <Sparkles className="w-3 h-3" />
-                <span>FX</span>
-              </button>
 
               <button
                 onClick={() => setIsAutoRotate((prev) => !prev)}

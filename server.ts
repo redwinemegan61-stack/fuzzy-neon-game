@@ -973,62 +973,69 @@ app.get(["/app-ads.txt", "/ads.txt"], (req, res) => {
   return res.send(`google.com, ${pubId}, DIRECT, f08c47fec0942fa0\n`);
 });
 
-app.get("/api/export-aab", (req, res) => {
-  try {
-    const variant = resolveAndroidBundleVariant(req.query);
-    const aabFiles = buildAndroidAabBundleEntries(process.cwd(), variant);
-    const aabBuffer = buildPkZipBuffer(aabFiles);
-    res.setHeader("Content-Type", "application/x-authorware-bin");
-    res.setHeader("Content-Disposition", `attachment; filename="${variant.aabFilename}"`);
-    res.setHeader("Content-Length", String(aabBuffer.length));
-    return res.send(aabBuffer);
-  } catch (err: any) {
-    console.error("Failed to generate AAB package:", err);
-    return res.status(500).json({ error: "Failed to create AAB package" });
-  }
-});
+// AAB export endpoints (Development / Staging only - excluded in production releases)
+if (process.env.NODE_ENV !== "production") {
+  app.get("/api/export-aab", (req, res) => {
+    try {
+      const variant = resolveAndroidBundleVariant(req.query);
+      const aabFiles = buildAndroidAabBundleEntries(process.cwd(), variant);
+      const aabBuffer = buildPkZipBuffer(aabFiles);
+      res.setHeader("Content-Type", "application/x-authorware-bin");
+      res.setHeader("Content-Disposition", `attachment; filename="${variant.aabFilename}"`);
+      res.setHeader("Content-Length", String(aabBuffer.length));
+      return res.send(aabBuffer);
+    } catch (err: any) {
+      console.error("Failed to generate AAB package:", err);
+      return res.status(500).json({ error: "Failed to create AAB package" });
+    }
+  });
 
-app.get("/api/export-aab-info", (req, res) => {
-  try {
-    const variant = resolveAndroidBundleVariant(req.query);
-    const aabFiles = buildAndroidAabBundleEntries(process.cwd(), variant);
-    const aabBuffer = buildPkZipBuffer(aabFiles);
-    return res.json({
-      filename: variant.aabFilename,
-      variantName: variant.variantName,
-      gradleTask: variant.gradleTask,
-      buildType: variant.buildType,
-      flavor: variant.flavor,
-      debuggable: variant.debuggable,
-      packageId: variant.packageId,
-      appName: variant.appName,
-      versionName: variant.versionName,
-      versionCode: variant.versionCode,
-      fileCount: aabFiles.length,
-      sizeBytes: aabBuffer.length,
-      files: aabFiles.map((f) => ({ path: f.relPath, bytes: f.content.length })),
-      base64Aab: aabBuffer.toString("base64"),
-    });
-  } catch (err: any) {
-    console.error("Failed to generate AAB info:", err);
-    return res.status(500).json({ error: "Failed to generate AAB info" });
-  }
-});
+  app.get("/api/export-aab-info", (req, res) => {
+    try {
+      const variant = resolveAndroidBundleVariant(req.query);
+      const aabFiles = buildAndroidAabBundleEntries(process.cwd(), variant);
+      const aabBuffer = buildPkZipBuffer(aabFiles);
+      return res.json({
+        filename: variant.aabFilename,
+        variantName: variant.variantName,
+        gradleTask: variant.gradleTask,
+        buildType: variant.buildType,
+        flavor: variant.flavor,
+        debuggable: variant.debuggable,
+        packageId: variant.packageId,
+        appName: variant.appName,
+        versionName: variant.versionName,
+        versionCode: variant.versionCode,
+        fileCount: aabFiles.length,
+        sizeBytes: aabBuffer.length,
+        files: aabFiles.map((f) => ({ path: f.relPath, bytes: f.content.length })),
+        base64Aab: aabBuffer.toString("base64"),
+      });
+    } catch (err: any) {
+      console.error("Failed to generate AAB info:", err);
+      return res.status(500).json({ error: "Failed to generate AAB info" });
+    }
+  });
 
-app.get("/api/export-android-project", (req, res) => {
-  try {
-    const variant = resolveAndroidBundleVariant(req.query);
-    const files = buildAndroidStudioProjectEntries(process.cwd(), variant);
-    const zipBuffer = buildPkZipBuffer(files);
-    res.setHeader("Content-Type", "application/zip");
-    res.setHeader("Content-Disposition", `attachment; filename="${variant.kitFilename}"`);
-    res.setHeader("Content-Length", String(zipBuffer.length));
-    return res.send(zipBuffer);
-  } catch (err: any) {
-    console.error("Failed to generate Android Studio project zip:", err);
-    return res.status(500).json({ error: "Failed to create Android Studio project zip" });
-  }
-});
+  app.get("/api/export-android-project", (req, res) => {
+    try {
+      const variant = resolveAndroidBundleVariant(req.query);
+      const files = buildAndroidStudioProjectEntries(process.cwd(), variant);
+      const zipBuffer = buildPkZipBuffer(files);
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", `attachment; filename="${variant.kitFilename}"`);
+      res.setHeader("Content-Length", String(zipBuffer.length));
+      return res.send(zipBuffer);
+    } catch (err: any) {
+      console.error("Failed to generate Android Studio project zip:", err);
+      return res.status(500).json({ error: "Failed to create Android Studio project zip" });
+    }
+  });
+} else {
+  app.get(["/api/export-aab", "/api/export-aab-info", "/api/export-android-project"], (req, res) => {
+    return res.status(404).json({ error: "AAB bundler is not available in production builds." });
+  });
+}
 
 app.get("/api/export-zip", (req, res) => {
   try {

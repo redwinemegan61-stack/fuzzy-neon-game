@@ -1930,12 +1930,14 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* 12. App Source Code ZIP Export Modal */}
-      <AppZipExportModal
-        isOpen={isZipModalOpen}
-        onClose={() => setIsZipModalOpen(false)}
-        onToast={(text, color) => showToast(text, color)}
-      />
+      {/* 12. App Source Code ZIP Export Modal (Dev only) */}
+      {!import.meta.env.PROD && (
+        <AppZipExportModal
+          isOpen={isZipModalOpen}
+          onClose={() => setIsZipModalOpen(false)}
+          onToast={(text, color) => showToast(text, color)}
+        />
+      )}
     </div>
   );
 }

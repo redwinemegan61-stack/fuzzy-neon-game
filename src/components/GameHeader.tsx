@@ -200,7 +200,7 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
           )}
         </button>
 
-        {onOpenZipExport && (
+        {!import.meta.env.PROD && onOpenZipExport && (
           <button
             onClick={onOpenZipExport}
             className="py-1.5 px-2.5 rounded-xl bg-gradient-to-r from-emerald-950/90 to-teal-950/90 border border-emerald-400/60 hover:border-emerald-300 text-emerald-300 hover:text-white text-[11px] font-black flex items-center justify-center gap-1 transition-all shadow-[0_0_12px_rgba(16,185,129,0.25)] cursor-pointer"

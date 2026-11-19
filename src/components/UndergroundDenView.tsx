@@ -113,8 +113,8 @@ export const UndergroundDenView: React.FC<UndergroundDenProps> = ({
   const [glowingBugStates, setGlowingBugStates] = useState<Record<string, boolean>>({});
 
   // Toggle-able Ambient Neon FX layer & Fireflies state
-  const [isNeonFxActive, setIsNeonFxActive] = useState<boolean>(true);
-  const [isFirefliesActive, setIsFirefliesActive] = useState<boolean>(true);
+  const [isNeonFxActive, setIsNeonFxActive] = useState<boolean>(false);
+  const [isFirefliesActive, setIsFirefliesActive] = useState<boolean>(false);
 
   // Surface and Den section references for smooth scrolling
   const surfaceRef = useRef<HTMLDivElement>(null);
@@ -358,29 +358,7 @@ export const UndergroundDenView: React.FC<UndergroundDenProps> = ({
             {playingLofi ? <Volume2 className="w-3.5 h-3.5 text-cyan-400 animate-pulse" /> : <VolumeX className="w-3.5 h-3.5" />}
           </button>
 
-          {/* Toggle-able Ambient Neon FX */}
-          <button
-            onClick={() => {
-              const next = !isNeonFxActive;
-              setIsNeonFxActive(next);
-              if (next) {
-                SoundEngine.playPowerup();
-                triggerFloatingParticle('✨', 'Ambient Neon FX Activated!');
-              } else {
-                SoundEngine.playTileStep();
-                triggerFloatingParticle('💤', 'Neon FX Muted');
-              }
-            }}
-            className={`px-2.5 py-1 rounded-xl border text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer ${
-              isNeonFxActive
-                ? 'bg-gradient-to-r from-cyan-950 to-fuchsia-950 border-cyan-400 text-cyan-200 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
-                : 'bg-slate-900 border-slate-800 text-slate-400'
-            }`}
-            title="Toggle Sparkling Crystal FX"
-          >
-            <Sparkles className={`w-3 h-3 ${isNeonFxActive ? 'text-cyan-300 animate-spin' : 'text-slate-500'}`} style={{ animationDuration: '4s' }} />
-            <span>Neon: {isNeonFxActive ? 'ON' : 'OFF'}</span>
-          </button>
+
 
           {/* Toggle-able Drifting Fireflies & Glowing Motes */}
           <button

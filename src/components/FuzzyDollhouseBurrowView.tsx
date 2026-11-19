@@ -67,8 +67,8 @@ export const FuzzyDollhouseBurrowView: React.FC<FuzzyDollhouseBurrowViewProps> =
   const [isExcavatedLowerCavern, setIsExcavatedLowerCavern] = useState<boolean>(false);
 
   // Toggle-able Ambient Neon FX layer & Sparkling Crystal Dust state
-  const [isNeonFxActive, setIsNeonFxActive] = useState<boolean>(true);
-  const [isFirefliesActive, setIsFirefliesActive] = useState<boolean>(true);
+  const [isNeonFxActive, setIsNeonFxActive] = useState<boolean>(false);
+  const [isFirefliesActive, setIsFirefliesActive] = useState<boolean>(false);
   const [tappedFireflyId, setTappedFireflyId] = useState<string | null>(null);
   const [sparkleIntensity, setSparkleIntensity] = useState<'radiant' | 'twinkle' | 'subtle'>('radiant');
   const [crystalSurgeTrigger, setCrystalSurgeTrigger] = useState<number>(0);
@@ -506,33 +506,6 @@ export const FuzzyDollhouseBurrowView: React.FC<FuzzyDollhouseBurrowViewProps> =
             )}
           </button>
 
-          {/* Toggle-able Ambient Neon FX Button */}
-          <button
-            onClick={handleToggleNeonFx}
-            className={`px-3 py-1 rounded-2xl border text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
-              isNeonFxActive
-                ? 'bg-gradient-to-r from-cyan-950/90 via-indigo-950/90 to-fuchsia-950/90 border-cyan-400 text-cyan-200 shadow-[0_0_15px_rgba(56,189,248,0.4)]'
-                : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500'
-            }`}
-            title="Toggle Sparkling Crystal Dust & Neon Ambient FX Layer"
-          >
-            <Sparkles
-              className={`w-3.5 h-3.5 transition-transform ${
-                isNeonFxActive ? 'text-cyan-300 animate-spin fill-cyan-400/30' : 'text-slate-500'
-              }`}
-              style={{ animationDuration: '6s' }}
-            />
-            <span>Neon FX:</span>
-            <span
-              className={`font-black ${
-                isNeonFxActive
-                  ? 'text-cyan-300 drop-shadow-[0_0_8px_rgba(56,189,248,0.9)]'
-                  : 'text-slate-500'
-              }`}
-            >
-              {isNeonFxActive ? 'ON ✨' : 'OFF'}
-            </span>
-          </button>
         </div>
       </div>
 
@@ -1795,24 +1768,7 @@ export const FuzzyDollhouseBurrowView: React.FC<FuzzyDollhouseBurrowViewProps> =
 
           {/* Floating On-Stage Neon Ambient FX Quick Controls */}
           <div className="absolute bottom-3 left-4 z-20 flex items-center gap-2 flex-wrap pointer-events-auto">
-            {/* Ambient Neon FX Toggle */}
-            <button
-              onClick={handleToggleNeonFx}
-              className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 backdrop-blur-md border transition-all active:scale-95 cursor-pointer shadow-xl ${
-                isNeonFxActive
-                  ? 'bg-slate-950/85 border-cyan-400/80 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.35)]'
-                  : 'bg-slate-950/85 border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500'
-              }`}
-              title="Toggle Sparkling Crystal Dust Particles Layer"
-            >
-              <Sparkles
-                className={`w-3.5 h-3.5 ${
-                  isNeonFxActive ? 'text-cyan-300 animate-spin fill-cyan-400/30' : 'text-slate-500'
-                }`}
-                style={{ animationDuration: '4s' }}
-              />
-              <span>Neon FX: {isNeonFxActive ? 'Sparkling ✨' : 'Muted'}</span>
-            </button>
+
 
             {/* Subterranean Fireflies & Glowing Motes Overlay Toggle */}
             <button

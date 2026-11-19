@@ -36,7 +36,7 @@ export const StandaloneThreeBorough: React.FC<StandaloneThreeBoroughProps> = ({
   const [isFireplaceOn, setIsFireplaceOn] = useState(true);
   const [cameraPreset, setCameraPreset] = useState<'overview' | 'mascot' | 'fireplace' | 'desk'>('overview');
   const [isAutoRotate, setIsAutoRotate] = useState(false);
-  const [enableBloomEngine, setEnableBloomEngine] = useState(true);
+  const [enableBloomEngine, setEnableBloomEngine] = useState(false);
   const [isHudCollapsed, setIsHudCollapsed] = useState(false);
   const [pettingCount, setPettingCount] = useState(0);
   const [showPetHeartToast, setShowPetHeartToast] = useState(false);
@@ -168,9 +168,9 @@ export const StandaloneThreeBorough: React.FC<StandaloneThreeBoroughProps> = ({
 
     // 2. Initialize Studio PBR & Post-Processing Engine
     const engine = createThreeGraphicsEngine(scene, camera, width, height, {
-      bloomStrength: lightingPreset === 'sun' ? 0.24 : 0.38,
-      bloomRadius: 0.45,
-      bloomThreshold: 0.78,
+      bloomStrength: 0,
+      bloomRadius: 0,
+      bloomThreshold: 1.0,
       exposure: lightingPreset === 'sun' ? 1.18 : 1.08,
     });
     container.appendChild(engine.renderer.domElement);
@@ -1174,18 +1174,6 @@ export const StandaloneThreeBorough: React.FC<StandaloneThreeBoroughProps> = ({
                   : '☀️ Daylight'}
               </button>
 
-              <button
-                onClick={() => setEnableBloomEngine((prev) => !prev)}
-                className={`px-2 py-1 rounded-xl text-[9px] font-bold flex items-center gap-1 border transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                  enableBloomEngine
-                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/50'
-                    : 'bg-slate-900 text-slate-400 border-slate-800'
-                }`}
-                title="Toggle UnrealBloom Post-Processing Engine"
-              >
-                <Sparkles className="w-3 h-3" />
-                <span>FX</span>
-              </button>
 
               <button
                 onClick={() => setIsAutoRotate((prev) => !prev)}
